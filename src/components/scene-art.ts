@@ -100,13 +100,6 @@ export function drawAtmosphere(c: Context, time: number) {
   star(c, 484, 32, 1, "#b9d5ff");
   star(c, 317, 70, 1, "#fd7ac5");
 
-  cloud(c, -45 + Math.sin(time * .09) * 13, 78, 244, 47, 4);
-  cloud(c, 150 + Math.sin(time * .07 + 2) * 9, 92, 205, 14, 17);
-  cloud(c, 382 + Math.sin(time * .075 + 1) * 14, 91, 185, 43, 9);
-  cloud(c, 570 + Math.sin(time * .06 + 3) * 9, 66, 107, 36, 33);
-  cloud(c, 274 + Math.sin(time * .055) * 8, 132, 84, 8, 42);
-  cloud(c, 5 + Math.sin(time * .04) * 6, 151, 133, 8, 51);
-
   const cx = 470, cy = 162, radius = 44;
   const aura = c.createRadialGradient(cx, cy, 17, cx, cy, 108);
   aura.addColorStop(0, `rgba(255,153,79,${.3 + Math.sin(time * .8) * .025})`);
@@ -340,13 +333,7 @@ function hillside(c: Context) {
       block(c, x, y, 2 + noise(i * 5 + 2) * 7, 1 + noise(i * 11 + 4) * 3, palette[Math.floor(noise(i * 29 + 7) * palette.length)]);
     }
   });
-  for (let i = 0; i < 36; i++) {
-    const t = i / 36;
-    const x = 356 + 268 * t + Math.sin(i * .48) * 4;
-    const y = 341 - 165 * t + Math.sin(i * .71) * 2;
-    block(c, x, y, 9 - t * 6, 3 - t, "#0e4b71");
-  }
-  // Shrubs and jagged rocks frame the trail without covering its luminous waypoints.
+  // Shrubs and jagged rocks frame the trail.
   for (const [x, y, r, s] of [[303,350,24,4],[326,337,16,7],[353,318,20,9],[385,300,16,11],[447,277,13,13],[478,253,12,16],[511,236,10,18],[591,203,15,20],[625,183,13,22],[570,305,26,24],[613,333,32,27],[636,276,24,30]]) {
     bush(c, x, y, r, s);
   }
@@ -375,7 +362,6 @@ function frontFoliage(c: Context) {
 
 export function drawLandscape(c: Context) {
   c.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-  mountains(c);
   city(c);
   river(c);
   nearShoreCity(c);
@@ -398,14 +384,6 @@ export function drawLightEffects(c: Context, time: number) {
     const x = left + ((noise(i * 17 + 9) * span + time * (7 + noise(i) * 11)) % span);
     const palette = y < 294 ? ["#ffb77c", "#fc6d94", "#eb5495"] : ["#46ccd4", "#2f8fc3", "#77e7d9"];
     block(c, x, y, 3 + noise(i * 13) * (y > 306 ? 16 : 10), i % 8 === 0 ? 2 : 1, palette[i % palette.length]);
-  }
-  for (let i = 0; i < 19; i++) {
-    const t = i / 19;
-    const x = 354 + 266 * t + Math.sin(i * .64) * 3;
-    const y = 343 - 166 * t + Math.sin(i * .55) * 3;
-    const bright = Math.sin(time * 1.8 - i * .7) > -.35;
-    block(c, x, y, 10 - 6 * t, 4 - 2 * t, bright ? "#5efce1" : "#14a9b5");
-    if (bright) block(c, x + 1, y, 4 - 2 * t, 1, "#d0fff0");
   }
 }
 
