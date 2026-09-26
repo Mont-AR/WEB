@@ -10,6 +10,7 @@ import {
   drawExplorer,
   drawLandscape,
   drawLightEffects,
+  drawRiverEffects,
   type ExplorerPosition,
 } from "./scene-art";
 
@@ -28,24 +29,32 @@ const mobilePathPoints: ExplorerPosition[] = [
 
 type Props = { step: number; reducedMotion: boolean };
 
-function paintExplorer(c: CanvasRenderingContext2D, image: HTMLImageElement | null, position: ExplorerPosition, time: number, moving: boolean) {
+const spriteCrops = [
+  [308, 240, 633, 1018],
+  [300, 145, 629, 1140],
+  [298, 216, 606, 1027],
+] as const;
+
+function paintExplorer(c: CanvasRenderingContext2D, images: HTMLImageElement[], position: ExplorerPosition, time: number, moving: boolean) {
+  const frame = moving ? [0, 1, 0, 2][Math.floor(time * 8) % 4] : 0;
+  const image = images[frame]?.complete && images[frame]?.naturalWidth ? images[frame] : images[0];
   if (!image?.complete || !image.naturalWidth) {
     drawExplorer(c, position, time, moving);
     return;
   }
   const { x, y, scale } = position;
   const bob = moving ? Math.sin(time * 13) * 1.7 : Math.sin(time * 1.5) * .25;
-  c.drawImage(image, Math.round(x - 54 * scale), Math.round(y - 109 * scale + bob), 100 * scale, 118 * scale);
+  const [sx, sy, sw, sh] = spriteCrops[images.indexOf(image)];
+  c.drawImage(image, sx, sy, sw, sh, Math.round(x - 27.5 * scale), Math.round(y - 88 * scale + bob), 55 * scale, 88 * scale);
 }
 
 export function PixelScene({ step, reducedMotion }: Props) {
   const skyRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundRef = useRef<HTMLCanvasElement>(null);
+  const riverEffectsRef = useRef<HTMLCanvasElement>(null);
   const travelerRef = useRef<HTMLCanvasElement>(null);
-  const explorerImageRef = useRef<HTMLImageElement | null>(null);
-  const cloudsRef = useRef<HTMLDivElement>(null);
-  const mountainsRef = useRef<HTMLDivElement>(null);
+  const explorerImagesRef = useRef<HTMLImageElement[]>([]);
   const positionRef = useRef<ExplorerPosition>({ ...pathPoints[0] });
   const movingRef = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -118,9 +127,10 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d", { alpha: true });
     const foregroundContext = foregroundRef.current?.getContext("2d", { alpha: true });
+    const riverContext = riverEffectsRef.current?.getContext("2d", { alpha: true });
     const travelerCanvas = travelerRef.current;
     const travelerContext = travelerCanvas?.getContext("2d", { alpha: true });
-    if (!context || !foregroundContext || !travelerContext) return;
+    if (!context || !foregroundContext || !riverContext || !travelerContext) return;
     const landscape = document.createElement("canvas");
     landscape.width = SCENE_WIDTH;
     landscape.height = SCENE_HEIGHT;
@@ -128,8 +138,8 @@ export function PixelScene({ step, reducedMotion }: Props) {
     if (!landscapeContext) return;
     drawLandscape(landscapeContext);
     travelerContext.imageSmoothingEnabled = false;
-    const explorer = new Image();
-    explorerImageRef.current = explorer;
+    const explorers = [new Image(), new Image(), new Image()];
+    explorerImagesRef.current = explorers;
 
     let frame = 0;
     const start = performance.now();
@@ -139,34 +149,19 @@ export function PixelScene({ step, reducedMotion }: Props) {
       foregroundContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
       foregroundContext.drawImage(landscape, 0, 0);
       drawLightEffects(foregroundContext, time);
+      riverContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
+      drawRiverEffects(riverContext, time);
       travelerContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      paintExplorer(travelerContext, explorer, positionRef.current, time, movingRef.current);
+      paintExplorer(travelerContext, explorers, positionRef.current, time, movingRef.current);
       if (!reducedMotion) frame = requestAnimationFrame(tick);
     };
-    explorer.onload = () => { if (reducedMotion) tick(); };
-    explorer.src = "/art/explorer.png";
+    ["/art/explorer.png", "/art/explorer-step-a.png", "/art/explorer-step-b.png"].forEach((src, index) => {
+      explorers[index].onload = () => { if (reducedMotion) tick(); };
+      explorers[index].src = src;
+    });
     tick();
-    return () => { cancelAnimationFrame(frame); explorer.onload = null; if (explorerImageRef.current === explorer) explorerImageRef.current = null; };
+    return () => { cancelAnimationFrame(frame); explorers.forEach(image => { image.onload = null; }); if (explorerImagesRef.current === explorers) explorerImagesRef.current = []; };
   }, [reducedMotion]);
-
-  useEffect(() => {
-    const clouds = cloudsRef.current;
-    const mountains = mountainsRef.current;
-    if (!clouds || !mountains) return;
-    if (reducedMotion) {
-      gsap.set([clouds, mountains], { x: 0, y: 0 });
-      return;
-    }
-    const move = (event?: PointerEvent) => {
-      const px = event ? event.clientX / window.innerWidth - .5 : 0;
-      const py = event ? event.clientY / window.innerHeight - .5 : 0;
-      gsap.to(clouds, { x: px * -15, y: py * -7 - step * 2, duration: 1.4, ease: "power2.out", overwrite: true });
-      gsap.to(mountains, { x: px * -8, y: py * -4 - step * 4, duration: 1.6, ease: "power2.out", overwrite: true });
-    };
-    move();
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => { window.removeEventListener("pointermove", move); gsap.killTweensOf([clouds, mountains]); };
-  }, [step, reducedMotion]);
 
   useEffect(() => {
     const points = isMobile ? mobilePathPoints : pathPoints;
@@ -178,7 +173,7 @@ export function PixelScene({ step, reducedMotion }: Props) {
       const context = travelerRef.current?.getContext("2d");
       if (context) {
         context.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-        paintExplorer(context, explorerImageRef.current, target, 0, false);
+        paintExplorer(context, explorerImagesRef.current, target, 0, false);
       }
       lastMobileRef.current = isMobile;
       return;
@@ -197,15 +192,18 @@ export function PixelScene({ step, reducedMotion }: Props) {
     <div className="scene-layers" aria-hidden="true">
       <div className="sky-layer" ref={skyRef} />
       <canvas ref={canvasRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer atmosphere-layer" />
-      <div ref={cloudsRef} className="asset-layer cloud-layer">
+      <div className="asset-layer cloud-layer">
         <img className="cloud-asset cloud-asset-left" src="/art/cloud-bank.png" alt="" />
         <img className="cloud-asset cloud-asset-middle" src="/art/cloud-bank.png" alt="" />
         <img className="cloud-asset cloud-asset-right" src="/art/cloud-bank.png" alt="" />
       </div>
-      <div ref={mountainsRef} className="asset-layer mountain-layer">
+      <div className="asset-layer mountain-layer">
         <img className="mountain-asset" src="/art/mountain-range.png" alt="" />
       </div>
       <canvas ref={foregroundRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer foreground-layer" />
+      <div className="asset-layer river-layer"><img className="river-asset" src="/art/river.png" alt="" /></div>
+      <canvas ref={riverEffectsRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer river-effects-layer" />
+      <div className="asset-layer trail-layer"><img className="trail-asset" src="/art/trail.png" alt="" /></div>
     </div>
     <div className="traveler-wrapper" aria-hidden="true">
       <canvas ref={travelerRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} />

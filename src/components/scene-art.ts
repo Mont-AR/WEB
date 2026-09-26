@@ -270,8 +270,8 @@ function nearShoreCity(c: Context) {
 
 function riverBounds(y: number): [number, number] {
   const knots = [
-    [257, 352, 407], [268, 317, 427], [281, 269, 405], [294, 235, 373],
-    [304, 180, 355], [317, 77, 330], [332, -18, 309], [360, -55, 293],
+    [257, 385, 465], [268, 330, 453], [281, 270, 425], [294, 200, 400],
+    [304, 150, 380], [317, 70, 340], [332, -15, 315], [360, -55, 293],
   ];
   for (let i = 0; i < knots.length - 1; i++) {
     const a = knots[i], b = knots[i + 1];
@@ -363,10 +363,7 @@ function frontFoliage(c: Context) {
 export function drawLandscape(c: Context) {
   c.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
   city(c);
-  river(c);
   nearShoreCity(c);
-  hillside(c);
-  frontFoliage(c);
 }
 
 export function drawLightEffects(c: Context, time: number) {
@@ -377,6 +374,9 @@ export function drawLightEffects(c: Context, time: number) {
     if (phase < -.41) continue;
     block(c, cityLights[i], cityLights[i + 1], 1, 1, cityPalette[cityLights[i + 2]]);
   }
+}
+
+export function drawRiverEffects(c: Context, time: number) {
   for (let i = 0; i < 92; i++) {
     const y = 266 + noise(i * 31 + 4) * 89;
     const [left, right] = riverBounds(y);
