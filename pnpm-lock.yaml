@@ -39,6 +39,9 @@ importers:
       '@types/three':
         specifier: 0.180.0
         version: 0.180.0
+      sharp:
+        specifier: 0.35.4
+        version: 0.35.4(@types/node@26.6.2)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -428,8 +431,7 @@ snapshots:
 
   '@fontsource/press-start-2p@5.2.7': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.4':
     optionalDependencies:
@@ -603,8 +605,7 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  detect-libc@2.1.2:
-    optional: true
+  detect-libc@2.1.2: {}
 
   fflate@0.8.3: {}
 
@@ -656,8 +657,7 @@ snapshots:
 
   scheduler@0.28.0: {}
 
-  semver@7.8.5:
-    optional: true
+  semver@7.8.5: {}
 
   sharp@0.35.4(@types/node@26.6.2):
     dependencies:
@@ -691,7 +691,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
       '@types/node': 26.6.2
-    optional: true
 
   source-map-js@1.2.1: {}
 

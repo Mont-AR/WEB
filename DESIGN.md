@@ -5,7 +5,8 @@ La referencia visual se reconstruye con código a una resolución lógica de 640
 ## Capas
 
 - **Three.js:** shader del cielo violeta y halo solar pulsante.
-- **Canvas 2D:** estrellas, nubes, sol a franjas, montañas, ciudad, río y sendero. Cada elemento se dibuja en coordenadas de escena.
+- **Canvas 2D:** estrellas, nubes, sol a franjas, montañas, ciudad, río y sendero. Cada elemento se dibuja en coordenadas de escena; el relieve y la vegetación se construyen con formas y texturas de píxeles.
+- **Trazado de luces:** `tools/trace-city-lights.mjs` convierte solo las coordenadas y colores de las luces de la ciudad en datos TypeScript. El PNG original no se carga en la web.
 - **Canvas frontal:** caminante dibujado por píxeles, animado con GSAP entre el inicio y tres hitos.
 - **HTML:** título, enlaces de contacto, iconos SVG navegables y contador del recorrido.
 
