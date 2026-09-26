@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { PixelScene } from "./pixel-scene";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
+import { content, heroContent, projectContent, servicesContent, startingContent } from "@/lib/content";
 
 const stages = [
-  { title: "¿Qué hago?", short: "Servicios" },
-  { title: "¿En qué punto estás?", short: "Tu punto de partida" },
-  { title: "Contame tu proyecto", short: "Tu proyecto" },
+  { title: servicesContent.title, short: servicesContent.navLabel },
+  { title: startingContent.title, short: startingContent.navLabel },
+  { title: projectContent.title, short: projectContent.navLabel },
 ] as const;
 
 function Icon({kind}: {kind:number}) {
@@ -26,7 +27,7 @@ export function Journey() {
   const [reducedMotion,setReducedMotion]=useState(false);
   const [service,setService]=useState("");
   const [startingPoint,setStartingPoint]=useState("");
-  const whatsapp="https://wa.me/5491158272260?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto";
+  const whatsapp=`https://wa.me/${content.contacto.whatsapp}?text=${encodeURIComponent(heroContent.action)}`;
 
   useEffect(()=>{
     const media=window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -51,29 +52,29 @@ export function Journey() {
     <div className="fixed-stage" data-step={step}>
       <PixelScene step={step} reducedMotion={reducedMotion}/>
       <div className="scene-vignette" aria-hidden="true"/>
-      <header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label="Mont.AR, volver al inicio">MONT<span>AR</span></a></header>
+      <header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label={`${content.marca.nombre}, volver al inicio`}>{content.marca.nombre.split(".")[0]}<span>{content.marca.nombre.split(".")[1]}</span></a></header>
 
       {step===0&&<div className="copy-panel is-visible">
-        <h1>TUS<br/>HERRAMIENTAS<br/>DIGITALES</h1>
-        <p className="hero-subhead">PARA DAR EL PRÓXIMO PASO</p>
-        <p className="hero-description">Webs, sistemas y automatizaciones a medida.</p>
-        <button className="hero-button" type="button" onClick={()=>goTo(3)}>HABLEMOS DE TU PROYECTO <Arrow/></button>
-        <div className="hero-meta"><p className="signature">FABRICIO MONTIVERO · ARGENTINA</p><a href={whatsapp} target="_blank" rel="noopener noreferrer" className="whatsapp-link">WHATSAPP <Arrow diagonal/></a></div>
+        <p className="hero-prefix">{heroContent.titlePrefix}</p>
+        <h1>{heroContent.title}</h1>
+        <p className="hero-description">{heroContent.description}</p>
+        <button className="hero-button" type="button" onClick={()=>goTo(3)}>{heroContent.action} <Arrow/></button>
+        <div className="hero-meta"><p className="signature">{content.marca.firma}</p><a href={whatsapp} target="_blank" rel="noopener noreferrer" className="whatsapp-link">{content.interfaz.whatsapp} <Arrow diagonal/></a></div>
       </div>}
 
       {step===1&&<ServicesPanel selected={service} onChoose={(value)=>{setService(value);goTo(2);}}/>}
       {step===2&&<StartingPanel selected={startingPoint} onChoose={(value)=>{setStartingPoint(value);goTo(3);}}/>}
       {step===3&&<ProjectPanel service={service} startingPoint={startingPoint} onServiceChange={setService} onStartingPointChange={setStartingPoint}/>}
 
-      <nav className="milestones" aria-label="Etapas del recorrido">
+      <nav className="milestones" aria-label={content.interfaz.etapas}>
         {stages.map((stage,index)=><button key={stage.title} type="button" className={`milestone milestone-${index+1} ${step===index+1?"is-active":""} ${step>index+1?"is-complete":""}`} onClick={()=>goTo(index+1)} aria-label={`Ir a ${stage.title}`} aria-current={step===index+1?"step":undefined}>
           <span className="milestone-icon"><Icon kind={index}/></span><span className="milestone-label">{stage.short}</span>
         </button>)}
       </nav>
 
-      <div className="journey-footer"><span className="step-display">{String(step).padStart(2,"0")} / 03</span></div>
-      <div className="scroll-cue" aria-hidden="true">{step<3?"SCROLL PARA AVANZAR":"RECORRIDO COMPLETO"} {step<3&&<Arrow down/>}</div>
-      <p className="sr-only" aria-live="polite">{step===0?"Inicio del recorrido":`Avance ${step} de 3: ${stages[step-1]?.title}`}</p>
+      <div className="journey-footer"><span className="step-display">{String(step).padStart(2,"0")} / {String(stages.length).padStart(2,"0")}</span></div>
+      <div className="scroll-cue" aria-hidden="true">{step<3?content.interfaz.scroll:content.interfaz.recorridoCompleto} {step<3&&<Arrow down/>}</div>
+      <p className="sr-only" aria-live="polite">{step===0?content.interfaz.inicio:`Avance ${step} de ${stages.length}: ${stages[step-1]?.title}`}</p>
     </div>
     <div className="scroll-track" aria-hidden="true">{[0,1,2,3].map(index=><section key={index} id={`etapa-${index}`} className="scroll-page"/>)}</div>
   </main>;

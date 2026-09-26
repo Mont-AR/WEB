@@ -16,7 +16,9 @@ La referencia visual se reconstruye en capas independientes. El explorador conse
 - **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos y alterna cinco posturas de pies durante cada trayecto.
 - **HTML:** título, enlace de contacto, iconos SVG navegables, tarjetas de servicios y punto de partida, formulario y contador del recorrido.
 
-El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último hito. En escritorio, los iconos abren el contenido de cada paso; en móvil se ocultan y el recorrido sigue mediante scroll, tarjetas y botón principal. Seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario prepara un correo en la aplicación local del visitante. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
+El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último hito. En escritorio, los iconos abren el contenido de cada paso; en móvil se ocultan y el recorrido sigue mediante scroll, tarjetas y botón principal. Seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario envía los datos a una ruta de Next.js que entrega el correo mediante Resend. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
+
+Los textos visibles, las opciones y los datos públicos de contacto se editan desde `content.json`. La clave de Resend y el remitente se configuran como variables del servidor.
 
 El texto del hero se revela una sola vez al aparecer, con un barrido escalonado de izquierda a derecha. Con movimiento reducido se muestra directamente.
 

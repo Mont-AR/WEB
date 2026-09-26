@@ -1,0 +1,93 @@
+{
+  "dominio": "montivero.ar",
+  "contacto": {
+    "email": "fabricio@montivero.ar",
+    "telefono": "+54 9 11 7819 1941",
+    "whatsapp": "5491178191941"
+  },
+  "marca": {
+    "nombre": "Mont.AR",
+    "firma": "Fabricio Montivero · Argentina"
+  },
+  "interfaz": {
+    "scroll": "Scroll para avanzar",
+    "recorridoCompleto": "Recorrido completo",
+    "inicio": "Inicio del recorrido",
+    "etapas": "Etapas del recorrido",
+    "whatsapp": "WhatsApp"
+  },
+  "seccions": [
+    {
+      "id": "hero",
+      "titlePrefix": "Montivero + Argentina = ",
+      "title": "Mont.AR tus herramientas digitales para dar el próximo paso.",
+      "description": "Hola! Soy Fabricio Montivero. Te espero para acompañarte a crear tus herramientas digitales, automatizar tareas y destrabar proyectos.",
+      "action": "¡Hablemos de tu proyecto!"
+    },
+    {
+      "id": "what-i-do",
+      "navLabel": "Servicios",
+      "title": "¿Qué hago?",
+      "descripcion": "Depende de la necesidad que tengas.",
+      "list": [
+        "web",
+        "wordpress",
+        "automatización",
+        "sistemas de gestión",
+        "bots",
+        "google workspace"
+      ],
+      "labels": {
+        "web": "Web",
+        "wordpress": "WordPress",
+        "automatización": "Automatización",
+        "sistemas de gestión": "Sistemas de gestión",
+        "bots": "Bots",
+        "google workspace": "Google Workspace"
+      },
+      "examples": "Desde sistemas de gestión y bots hasta webs y automatizaciones con Google Workspace. Cada proyecto empieza por una necesidad."
+    },
+    {
+      "id": "starting-point",
+      "navLabel": "Tu punto de partida",
+      "title": "¿En qué punto estás?",
+      "descripcion": "Una idea nueva, procesos que llevan demasiado tiempo o algo que dejó de funcionar.",
+      "list": [
+        {
+          "title": "Crear",
+          "description": "Una solución a medida."
+        },
+        {
+          "title": "Conectar y automatizar",
+          "description": "Menos tareas repetidas."
+        },
+        {
+          "title": "Destrabar y mejorar",
+          "description": "Un camino para seguir."
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "navLabel": "Tu proyecto",
+      "title": "Contame tu proyecto",
+      "descripcion": "Unos datos para dar el próximo paso.",
+      "form": {
+        "contactMethod": "Forma de contacto",
+        "email": "Mail",
+        "phone": "Teléfono",
+        "emailPlaceholder": "tu@email.com",
+        "phonePlaceholder": "+54 9 ...",
+        "service": "Qué necesito",
+        "startingPoint": "En qué punto estoy",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Contame brevemente qué querés hacer o mejorar...",
+        "choose": "Elegí una opción",
+        "submit": "Enviar",
+        "submitting": "Enviando...",
+        "success": "¡Gracias! Tu proyecto se envió. Te voy a contactar pronto.",
+        "error": "No pudimos enviar tu proyecto. Intentá de nuevo en unos minutos."
+      }
+    }
+  ]
+}
