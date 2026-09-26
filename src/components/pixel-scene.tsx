@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
+import { CityLayer } from "./city-layer";
+import { RiverLayer } from "./river-layer";
 import {
   SCENE_HEIGHT,
   SCENE_WIDTH,
-  drawAtmosphere,
   drawExplorer,
-  drawLandscape,
-  drawLightEffects,
   type ExplorerPosition,
 } from "./scene-art";
 
@@ -36,6 +35,24 @@ const spriteCrops = [
   [292, 240, 641, 1004],
 ] as const;
 
+const artVariants = {
+  "cloud-bank": [1076, 2152, 4304],
+  "mountain-range": [1035, 2069, 4138],
+  trail: [836, 1672, 4180],
+} as const;
+
+function ArtImage({ name, className, sizes }: { name: keyof typeof artVariants; className: string; sizes: string }) {
+  const [small, base, large] = artVariants[name];
+  return <img
+    className={className}
+    src={`/art/${name}.png`}
+    srcSet={`/art/${name}-small.webp ${small}w, /art/${name}.png ${base}w, /art/${name}-large.webp ${large}w`}
+    sizes={sizes}
+    alt=""
+    decoding="async"
+  />;
+}
+
 function paintExplorer(c: CanvasRenderingContext2D, images: HTMLImageElement[], position: ExplorerPosition, time: number, moving: boolean) {
   const frame = moving ? [0, 3, 1, 3, 0, 4, 2, 4][Math.floor(time * 10) % 8] : 0;
   const image = images[frame]?.complete && images[frame]?.naturalWidth ? images[frame] : images[0];
@@ -46,18 +63,72 @@ function paintExplorer(c: CanvasRenderingContext2D, images: HTMLImageElement[], 
   const { x, y, scale } = position;
   const bob = moving ? Math.sin(time * 13) * 1.7 : Math.sin(time * 1.5) * .25;
   const [sx, sy, sw, sh] = spriteCrops[images.indexOf(image)];
-  c.drawImage(image, sx, sy, sw, sh, Math.round(x - 27.5 * scale), Math.round(y - 88 * scale + bob), 55 * scale, 88 * scale);
+  const sourceScale = image.naturalWidth / 1159;
+  c.drawImage(image, sx * sourceScale, sy * sourceScale, sw * sourceScale, sh * sourceScale, Math.round(x - 27.5 * scale), Math.round(y - 88 * scale + bob), 55 * scale, 88 * scale);
+}
+
+function StarField({ reducedMotion }: { reducedMotion: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const host = canvas?.parentElement;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !host || !context) return;
+
+    let seed = 1739;
+    const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const stars = Array.from({ length: 180 }, (_, index) => ({
+      x: random(), y: random() * .41, radius: .35 + random() * 1.15,
+      phase: random() * Math.PI * 2, speed: .35 + random() * 1.25,
+      hue: index % 7 === 0 ? 193 : index % 5 === 0 ? 310 : 224,
+      bright: index % 37 === 0,
+    }));
+    let width = 0, height = 0, frame = 0;
+    const resize = () => {
+      width = host.clientWidth;
+      height = host.clientHeight;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2, 4096 / Math.max(1, width), 2304 / Math.max(1, height));
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      if (reducedMotion) draw(0);
+    };
+    const draw = (time: number) => {
+      context.clearRect(0, 0, width, height);
+      for (const star of stars) {
+        const x = star.x * width, y = star.y * height;
+        const alpha = reducedMotion ? .72 : .53 + .24 * Math.sin(time * star.speed + star.phase);
+        if (star.bright) {
+          const glow = context.createRadialGradient(x, y, 0, x, y, 11);
+          glow.addColorStop(0, `hsla(${star.hue},100%,91%,${alpha * .72})`);
+          glow.addColorStop(1, `hsla(${star.hue},100%,72%,0)`);
+          context.fillStyle = glow;
+          context.beginPath(); context.arc(x, y, 11, 0, Math.PI * 2); context.fill();
+        }
+        context.fillStyle = `hsla(${star.hue},100%,${star.bright ? 95 : 86}%,${alpha})`;
+        context.beginPath(); context.arc(x, y, star.bright ? 1.7 : star.radius, 0, Math.PI * 2); context.fill();
+      }
+    };
+    const animate = (time: number) => { draw(time / 1000); frame = requestAnimationFrame(animate); };
+    const observer = new ResizeObserver(resize);
+    observer.observe(host);
+    resize();
+    if (!reducedMotion) frame = requestAnimationFrame(animate);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [reducedMotion]);
+
+  return <canvas ref={canvasRef} className="star-layer" aria-hidden="true" />;
 }
 
 export function PixelScene({ step, reducedMotion }: Props) {
   const skyRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const foregroundRef = useRef<HTMLCanvasElement>(null);
   const travelerRef = useRef<HTMLCanvasElement>(null);
   const explorerImagesRef = useRef<HTMLImageElement[]>([]);
   const positionRef = useRef<ExplorerPosition>({ ...pathPoints[0] });
   const movingRef = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [spriteTier, setSpriteTier] = useState<"small" | "base" | "large" | null>(null);
   const lastMobileRef = useRef(false);
 
   useEffect(() => {
@@ -66,6 +137,16 @@ export function PixelScene({ step, reducedMotion }: Props) {
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const physicalWidth = window.innerWidth * (window.devicePixelRatio || 1);
+      setSpriteTier(physicalWidth >= 2560 ? "large" : physicalWidth >= 1500 ? "base" : "small");
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, []);
 
   useEffect(() => {
@@ -82,10 +163,9 @@ export function PixelScene({ step, reducedMotion }: Props) {
     renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(renderer.domElement);
     const material = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
       vertexShader: "varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.0); }",
       fragmentShader: `
-        precision mediump float; varying vec2 vUv; uniform float uTime;
+        precision mediump float; varying vec2 vUv;
         void main(){
           float y=vUv.y;
           vec3 night=vec3(.015,.019,.13);
@@ -93,9 +173,6 @@ export function PixelScene({ step, reducedMotion }: Props) {
           vec3 dusk=vec3(.67,.045,.39);
           vec3 col=mix(dusk,violet,smoothstep(.18,.61,y));
           col=mix(col,night,smoothstep(.55,1.0,y));
-          float d=distance(vUv,vec2(.734,.55));
-          float glow=exp(-d*d*29.0)*(.78+.035*sin(uTime*.8));
-          col+=vec3(.85,.16,.21)*glow;
           gl_FragColor=vec4(col,1.0);
         }`,
       depthTest: false,
@@ -105,37 +182,19 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
     scene.add(quad);
     const camera = new THREE.Camera();
-    let frame = 0;
-    const start = performance.now();
-    const animate = () => {
-      material.uniforms.uTime.value = (performance.now() - start) / 1000;
-      renderer.render(scene, camera);
-      frame = requestAnimationFrame(animate);
-    };
-    if (reducedMotion) renderer.render(scene, camera);
-    else animate();
+    renderer.render(scene, camera);
     return () => {
-      cancelAnimationFrame(frame);
       renderer.dispose();
       material.dispose();
       quad.geometry.dispose();
       renderer.domElement.remove();
     };
-  }, [reducedMotion]);
+  }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d", { alpha: true });
-    const foregroundContext = foregroundRef.current?.getContext("2d", { alpha: true });
     const travelerCanvas = travelerRef.current;
     const travelerContext = travelerCanvas?.getContext("2d", { alpha: true });
-    if (!context || !foregroundContext || !travelerContext) return;
-    const landscape = document.createElement("canvas");
-    landscape.width = SCENE_WIDTH;
-    landscape.height = SCENE_HEIGHT;
-    const landscapeContext = landscape.getContext("2d");
-    if (!landscapeContext) return;
-    drawLandscape(landscapeContext);
+    if (!travelerContext || !spriteTier) return;
     travelerContext.imageSmoothingEnabled = false;
     const explorers = [new Image(), new Image(), new Image(), new Image(), new Image()];
     explorerImagesRef.current = explorers;
@@ -144,21 +203,17 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const start = performance.now();
     const tick = () => {
       const time = reducedMotion ? 0 : (performance.now() - start) / 1000;
-      drawAtmosphere(context, time);
-      foregroundContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      foregroundContext.drawImage(landscape, 0, 0);
-      drawLightEffects(foregroundContext, time);
       travelerContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
       paintExplorer(travelerContext, explorers, positionRef.current, time, movingRef.current);
       if (!reducedMotion) frame = requestAnimationFrame(tick);
     };
-    ["/art/explorer.png", "/art/explorer-step-a.png", "/art/explorer-step-b.png", "/art/explorer-step-c.png", "/art/explorer-step-d.png"].forEach((src, index) => {
+    ["explorer", "explorer-step-a", "explorer-step-b", "explorer-step-c", "explorer-step-d"].forEach((name, index) => {
       explorers[index].onload = () => { if (reducedMotion) tick(); };
-      explorers[index].src = src;
+      explorers[index].src = `/art/${name}${spriteTier === "base" ? ".png" : `-${spriteTier}.webp`}`;
     });
     tick();
     return () => { cancelAnimationFrame(frame); explorers.forEach(image => { image.onload = null; }); if (explorerImagesRef.current === explorers) explorerImagesRef.current = []; };
-  }, [reducedMotion]);
+  }, [reducedMotion, spriteTier]);
 
   useEffect(() => {
     const points = isMobile ? mobilePathPoints : pathPoints;
@@ -188,18 +243,19 @@ export function PixelScene({ step, reducedMotion }: Props) {
   return <>
     <div className="scene-layers" aria-hidden="true">
       <div className="sky-layer" ref={skyRef} />
-      <canvas ref={canvasRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer atmosphere-layer" />
+      <StarField reducedMotion={reducedMotion} />
+      <div className="sun-disc" />
       <div className="asset-layer cloud-layer">
-        <img className="cloud-asset cloud-asset-left" src="/art/cloud-bank.png" alt="" />
-        <img className="cloud-asset cloud-asset-middle" src="/art/cloud-bank.png" alt="" />
-        <img className="cloud-asset cloud-asset-right" src="/art/cloud-bank.png" alt="" />
+        <ArtImage name="cloud-bank" className="cloud-asset cloud-asset-left" sizes="(max-width: 700px) 72vw, 44vw" />
+        <ArtImage name="cloud-bank" className="cloud-asset cloud-asset-middle" sizes="(max-width: 700px) 42vw, 25vw" />
+        <ArtImage name="cloud-bank" className="cloud-asset cloud-asset-right" sizes="(max-width: 700px) 73vw, 44vw" />
       </div>
       <div className="asset-layer mountain-layer">
-        <img className="mountain-asset" src="/art/mountain-range.png" alt="" />
+        <ArtImage name="mountain-range" className="mountain-asset" sizes="(max-width: 700px) 165vw, 100vw" />
       </div>
-      <canvas ref={foregroundRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer foreground-layer" />
-      <div className="asset-layer river-layer"><img className="river-asset" src="/art/river.png" alt="" /></div>
-      <div className="asset-layer trail-layer"><img className="trail-asset" src="/art/trail.png" alt="" /></div>
+      <CityLayer reducedMotion={reducedMotion} />
+      <RiverLayer />
+      <div className="asset-layer trail-layer"><ArtImage name="trail" className="trail-asset" sizes="(max-width: 700px) 165vw, 100vw" /></div>
     </div>
     <div className="traveler-wrapper" aria-hidden="true">
       <canvas ref={travelerRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} />

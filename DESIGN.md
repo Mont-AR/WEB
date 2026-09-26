@@ -1,17 +1,22 @@
 # Diseño del hero Mont.AR
 
-La referencia visual se reconstruye en capas independientes a una resolución lógica de 640 × 360 píxeles. El PNG original no forma parte de la web; los recortes con transparencia, generados a partir de la referencia, se combinan con dibujo y animación por código.
+La referencia visual se reconstruye en capas independientes. El explorador conserva una resolución lógica de 640 × 360 píxeles; la ciudad y las estrellas usan la resolución de pantalla. El PNG original no forma parte de la web; los recortes con transparencia se combinan con dibujo y animación por código.
 
 ## Capas
 
-- **Three.js:** shader del cielo violeta y halo solar pulsante.
-- **Canvas 2D:** estrellas, sol a franjas y ciudad. Las luces urbanas parpadean; el río permanece estático.
-- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `river.png`, `trail.png` y cinco posturas `explorer*.png`, generados con ImageGen a partir de la referencia. La cordillera y el río permanecen fijos; las nubes se desplazan solo en horizontal.
+- **Three.js:** shader del cielo violeta.
+- **Sol CSS:** disco circular con franjas y halo pulsante; `aspect-ratio: 1` evita la deformación al cambiar el viewport.
+- **Canvas de estrellas:** puntos luminosos a resolución de pantalla con tamaños y brillos variables, separados del pixel art del paisaje.
+- **Canvas de ciudad:** dos grupos lejanos de edificios bajos forman una silueta oscura en el valle; algunas ventanas cálidas parpadean suavemente.
+- **Río SVG:** una curva estrecha y estática en tonos violeta y azul, con pocos reflejos discretos.
+- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `trail.png` y cinco posturas `explorer*.png`, generados a partir de la referencia. La cordillera permanece fija; las nubes se desplazan solo en horizontal.
+- **Resolución adaptable:** paisaje y explorador ofrecen tamaños pequeño, original y grande. Las imágenes del paisaje usan `srcSet`/`sizes`; el canvas del explorador elige según ancho físico de pantalla. `tools/build-responsive-art.mjs` genera las variantes WebP sin pérdida.
+- **Sendero:** se muestra completo, incluidos los arbustos de su izquierda, sin máscara de recorte ni arbusto superpuesto.
 - **Trazado de luces:** `tools/trace-city-lights.mjs` convierte solo las coordenadas y colores de las luces de la ciudad en datos TypeScript. El PNG original no se carga en la web.
 - **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos y alterna cinco posturas de pies durante cada trayecto.
 - **HTML:** título, enlace de contacto, iconos SVG navegables, tarjetas de servicios y punto de partida, formulario y contador del recorrido.
 
-El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último icono. Los hitos abren el contenido de cada paso; seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario prepara un correo en la aplicación local del visitante. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
+El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último hito. En escritorio, los iconos abren el contenido de cada paso; en móvil se ocultan y el recorrido sigue mediante scroll, tarjetas y botón principal. Seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario prepara un correo en la aplicación local del visitante. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
 
 El texto del hero se revela una sola vez al aparecer, con un barrido escalonado de izquierda a derecha. Con movimiento reducido se muestra directamente.
 

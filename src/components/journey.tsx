@@ -26,7 +26,7 @@ export function Journey() {
   const [reducedMotion,setReducedMotion]=useState(false);
   const [service,setService]=useState("");
   const [startingPoint,setStartingPoint]=useState("");
-  const whatsapp="https://wa.me/5491178191941?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto";
+  const whatsapp="https://wa.me/5491158272260?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto";
 
   useEffect(()=>{
     const media=window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -51,7 +51,7 @@ export function Journey() {
     <div className="fixed-stage" data-step={step}>
       <PixelScene step={step} reducedMotion={reducedMotion}/>
       <div className="scene-vignette" aria-hidden="true"/>
-      <header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label="Mont.AR, volver al inicio">MONT.<span>AR</span></a></header>
+      <header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label="Mont.AR, volver al inicio">MONT<span>AR</span></a></header>
 
       {step===0&&<div className="copy-panel is-visible">
         <h1>TUS<br/>HERRAMIENTAS<br/>DIGITALES</h1>
@@ -71,7 +71,7 @@ export function Journey() {
         </button>)}
       </nav>
 
-      <div className="journey-footer"><span>UN CAMINO, TRES FORMAS DE AVANZAR</span><span className="step-display">{String(step).padStart(2,"0")} / 03</span></div>
+      <div className="journey-footer"><span className="step-display">{String(step).padStart(2,"0")} / 03</span></div>
       <div className="scroll-cue" aria-hidden="true">{step<3?"SCROLL PARA AVANZAR":"RECORRIDO COMPLETO"} {step<3&&<Arrow down/>}</div>
       <p className="sr-only" aria-live="polite">{step===0?"Inicio del recorrido":`Avance ${step} de 3: ${stages[step-1]?.title}`}</p>
     </div>

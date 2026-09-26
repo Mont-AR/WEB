@@ -72,7 +72,7 @@ export function ProjectPanel({ service, startingPoint, onServiceChange, onStarti
       "", "Descripción:", description.trim(),
     ].join("\n");
     setStatus("Se preparó un correo con los datos de tu proyecto. Revisalo y envialo desde tu aplicación de correo.");
-    window.location.href = `mailto:fabricio@montivero.ar?subject=${encodeURIComponent("Nuevo proyecto desde Mont.AR")}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:montvlein@gmail.com?subject=${encodeURIComponent("Nuevo proyecto desde Mont.AR")}&body=${encodeURIComponent(body)}`;
   };
 
   return <section className="content-panel project-panel" aria-labelledby="project-title">
@@ -97,7 +97,7 @@ export function ProjectPanel({ service, startingPoint, onServiceChange, onStarti
       </select>
       <label htmlFor="description">Descripción</label>
       <textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Contame brevemente qué querés hacer o mejorar..." rows={4} required />
-      <button className="hero-button form-submit" type="submit">PREPARAR EMAIL <ChoiceArrow/></button>
+      <button className="hero-button form-submit" type="submit">Enviar <ChoiceArrow/></button>
       {status && <p className="form-status" role="status">{status}</p>}
     </form>
   </section>;

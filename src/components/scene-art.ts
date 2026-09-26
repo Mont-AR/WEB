@@ -48,12 +48,6 @@ function stairStroke(c: Context, points: number[], color: string, thickness = 2)
   }
 }
 
-function star(c: Context, x: number, y: number, size: number, color: string) {
-  block(c, x - size * 2, y, size * 5, size, color);
-  block(c, x, y - size * 2, size, size * 5, color);
-  block(c, x, y, size, size, "#fff9e4");
-}
-
 function cloud(c: Context, x: number, baseline: number, width: number, height: number, seed: number) {
   const cell = 3;
   const columns = Math.ceil(width / cell);
@@ -86,19 +80,6 @@ function cloud(c: Context, x: number, baseline: number, width: number, height: n
 
 export function drawAtmosphere(c: Context, time: number) {
   c.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-  for (let i = 0; i < 380; i++) {
-    const x = noise(i * 13 + 5) * SCENE_WIDTH;
-    const y = noise(i * 29 + 31) * 175;
-    const pulse = Math.sin(time * (0.7 + noise(i + 33) * 1.7) + i * 7);
-    if (pulse < -.36) continue;
-    block(c, x, y, i % 59 === 0 ? 2 : 1, 1, i % 9 === 0 ? "#6cecf7" : i % 3 === 0 ? "#f48cdd" : "#b942b5");
-  }
-  star(c, 145, 21, 2, "#f933c1");
-  star(c, 354, 20, 2, "#fc69dc");
-  star(c, 559, 21, 2, "#fb43c5");
-  star(c, 190, 47, 1, "#b4e9ff");
-  star(c, 484, 32, 1, "#b9d5ff");
-  star(c, 317, 70, 1, "#fd7ac5");
 
   const cx = 470, cy = 162, radius = 44;
   const aura = c.createRadialGradient(cx, cy, 17, cx, cy, 108);
