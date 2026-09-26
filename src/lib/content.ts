@@ -4,6 +4,7 @@ type HeroSection = {
   id: "hero";
   titlePrefix: string;
   title: string;
+  subtitle: string;
   description: string;
   action: string;
 };

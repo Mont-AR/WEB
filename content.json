@@ -2,12 +2,12 @@
   "dominio": "montivero.ar",
   "contacto": {
     "email": "fabricio@montivero.ar",
-    "telefono": "+54 9 11 7819 1941",
-    "whatsapp": "5491178191941"
+    "telefono": "+54 9 11 5827 2260",
+    "whatsapp": "5491158272260"
   },
   "marca": {
-    "nombre": "Mont.AR",
-    "firma": "Fabricio Montivero · Argentina"
+    "nombre": "MONT.AR",
+    "firma": "Fabricio Montivero · AR"
   },
   "interfaz": {
     "scroll": "Scroll para avanzar",
@@ -19,18 +19,19 @@
   "seccions": [
     {
       "id": "hero",
-      "titlePrefix": "Montivero + Argentina = ",
-      "title": "Mont.AR tus herramientas digitales para dar el próximo paso.",
-      "description": "Hola! Soy Fabricio Montivero. Te espero para acompañarte a crear tus herramientas digitales, automatizar tareas y destrabar proyectos.",
-      "action": "¡Hablemos de tu proyecto!"
+      "titlePrefix": "",
+      "title": "herramientas digitales",
+      "subtitle": "PARA DAR EL PRÓXIMO PASO",
+      "description": "Webs, sistemas y automatizaciones a medida.",
+      "action": "¡HABLEMOS DE TU PROYECTO!"
     },
     {
       "id": "what-i-do",
       "navLabel": "Servicios",
       "title": "¿Qué hago?",
-      "descripcion": "Depende de la necesidad que tengas.",
+      "descripcion": "Cada proyecto empieza por una necesidad.",
       "list": [
-        "web",
+        "web personalizada",
         "wordpress",
         "automatización",
         "sistemas de gestión",
@@ -45,11 +46,11 @@
         "bots": "Bots",
         "google workspace": "Google Workspace"
       },
-      "examples": "Desde sistemas de gestión y bots hasta webs y automatizaciones con Google Workspace. Cada proyecto empieza por una necesidad."
+      "examples": ""
     },
     {
       "id": "starting-point",
-      "navLabel": "Tu punto de partida",
+      "navLabel": "Necesidad",
       "title": "¿En qué punto estás?",
       "descripcion": "Una idea nueva, procesos que llevan demasiado tiempo o algo que dejó de funcionar.",
       "list": [
