@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { PixelScene } from "./pixel-scene";
+import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
 
 const stages = [
-  { title: "Automatizaciones", short: "Automatizar" },
-  { title: "Sistemas", short: "Conectar" },
-  { title: "Webs", short: "Crear" },
+  { title: "¿Qué hago?", short: "Servicios" },
+  { title: "¿En qué punto estás?", short: "Tu punto de partida" },
+  { title: "Contame tu proyecto", short: "Tu proyecto" },
 ] as const;
 
 function Icon({kind}: {kind:number}) {
@@ -23,7 +24,8 @@ function Arrow({diagonal=false,down=false}: {diagonal?:boolean;down?:boolean}) {
 export function Journey() {
   const [step,setStep]=useState(0);
   const [reducedMotion,setReducedMotion]=useState(false);
-  const email="fabricio@montivero.ar";
+  const [service,setService]=useState("");
+  const [startingPoint,setStartingPoint]=useState("");
   const whatsapp="https://wa.me/5491178191941?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto";
 
   useEffect(()=>{
@@ -46,18 +48,22 @@ export function Journey() {
   };
 
   return <main>
-    <div className="fixed-stage">
+    <div className="fixed-stage" data-step={step}>
       <PixelScene step={step} reducedMotion={reducedMotion}/>
       <div className="scene-vignette" aria-hidden="true"/>
       <header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label="Mont.AR, volver al inicio">MONT.<span>AR</span></a></header>
 
-      <div className="copy-panel is-visible">
+      {step===0&&<div className="copy-panel is-visible">
         <h1>TUS<br/>HERRAMIENTAS<br/>DIGITALES</h1>
         <p className="hero-subhead">PARA DAR EL PRÓXIMO PASO</p>
         <p className="hero-description">Webs, sistemas y automatizaciones a medida.</p>
-        <a className="hero-button" href={`mailto:${email}?subject=Proyecto%20para%20Mont.AR`}>HABLEMOS DE TU PROYECTO <Arrow/></a>
+        <button className="hero-button" type="button" onClick={()=>goTo(3)}>HABLEMOS DE TU PROYECTO <Arrow/></button>
         <div className="hero-meta"><p className="signature">FABRICIO MONTIVERO · ARGENTINA</p><a href={whatsapp} target="_blank" rel="noopener noreferrer" className="whatsapp-link">WHATSAPP <Arrow diagonal/></a></div>
-      </div>
+      </div>}
+
+      {step===1&&<ServicesPanel selected={service} onChoose={(value)=>{setService(value);goTo(2);}}/>}
+      {step===2&&<StartingPanel selected={startingPoint} onChoose={(value)=>{setStartingPoint(value);goTo(3);}}/>}
+      {step===3&&<ProjectPanel service={service} startingPoint={startingPoint} onServiceChange={setService} onStartingPointChange={setStartingPoint}/>}
 
       <nav className="milestones" aria-label="Etapas del recorrido">
         {stages.map((stage,index)=><button key={stage.title} type="button" className={`milestone milestone-${index+1} ${step===index+1?"is-active":""} ${step>index+1?"is-complete":""}`} onClick={()=>goTo(index+1)} aria-label={`Ir a ${stage.title}`} aria-current={step===index+1?"step":undefined}>

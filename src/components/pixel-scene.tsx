@@ -10,7 +10,6 @@ import {
   drawExplorer,
   drawLandscape,
   drawLightEffects,
-  drawRiverEffects,
   type ExplorerPosition,
 } from "./scene-art";
 
@@ -33,10 +32,12 @@ const spriteCrops = [
   [308, 240, 633, 1018],
   [300, 145, 629, 1140],
   [298, 216, 606, 1027],
+  [308, 205, 623, 1036],
+  [292, 240, 641, 1004],
 ] as const;
 
 function paintExplorer(c: CanvasRenderingContext2D, images: HTMLImageElement[], position: ExplorerPosition, time: number, moving: boolean) {
-  const frame = moving ? [0, 1, 0, 2][Math.floor(time * 8) % 4] : 0;
+  const frame = moving ? [0, 3, 1, 3, 0, 4, 2, 4][Math.floor(time * 10) % 8] : 0;
   const image = images[frame]?.complete && images[frame]?.naturalWidth ? images[frame] : images[0];
   if (!image?.complete || !image.naturalWidth) {
     drawExplorer(c, position, time, moving);
@@ -52,7 +53,6 @@ export function PixelScene({ step, reducedMotion }: Props) {
   const skyRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundRef = useRef<HTMLCanvasElement>(null);
-  const riverEffectsRef = useRef<HTMLCanvasElement>(null);
   const travelerRef = useRef<HTMLCanvasElement>(null);
   const explorerImagesRef = useRef<HTMLImageElement[]>([]);
   const positionRef = useRef<ExplorerPosition>({ ...pathPoints[0] });
@@ -127,10 +127,9 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d", { alpha: true });
     const foregroundContext = foregroundRef.current?.getContext("2d", { alpha: true });
-    const riverContext = riverEffectsRef.current?.getContext("2d", { alpha: true });
     const travelerCanvas = travelerRef.current;
     const travelerContext = travelerCanvas?.getContext("2d", { alpha: true });
-    if (!context || !foregroundContext || !riverContext || !travelerContext) return;
+    if (!context || !foregroundContext || !travelerContext) return;
     const landscape = document.createElement("canvas");
     landscape.width = SCENE_WIDTH;
     landscape.height = SCENE_HEIGHT;
@@ -138,7 +137,7 @@ export function PixelScene({ step, reducedMotion }: Props) {
     if (!landscapeContext) return;
     drawLandscape(landscapeContext);
     travelerContext.imageSmoothingEnabled = false;
-    const explorers = [new Image(), new Image(), new Image()];
+    const explorers = [new Image(), new Image(), new Image(), new Image(), new Image()];
     explorerImagesRef.current = explorers;
 
     let frame = 0;
@@ -149,13 +148,11 @@ export function PixelScene({ step, reducedMotion }: Props) {
       foregroundContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
       foregroundContext.drawImage(landscape, 0, 0);
       drawLightEffects(foregroundContext, time);
-      riverContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      drawRiverEffects(riverContext, time);
       travelerContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
       paintExplorer(travelerContext, explorers, positionRef.current, time, movingRef.current);
       if (!reducedMotion) frame = requestAnimationFrame(tick);
     };
-    ["/art/explorer.png", "/art/explorer-step-a.png", "/art/explorer-step-b.png"].forEach((src, index) => {
+    ["/art/explorer.png", "/art/explorer-step-a.png", "/art/explorer-step-b.png", "/art/explorer-step-c.png", "/art/explorer-step-d.png"].forEach((src, index) => {
       explorers[index].onload = () => { if (reducedMotion) tick(); };
       explorers[index].src = src;
     });
@@ -202,7 +199,6 @@ export function PixelScene({ step, reducedMotion }: Props) {
       </div>
       <canvas ref={foregroundRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer foreground-layer" />
       <div className="asset-layer river-layer"><img className="river-asset" src="/art/river.png" alt="" /></div>
-      <canvas ref={riverEffectsRef} width={SCENE_WIDTH} height={SCENE_HEIGHT} className="pixel-layer river-effects-layer" />
       <div className="asset-layer trail-layer"><img className="trail-asset" src="/art/trail.png" alt="" /></div>
     </div>
     <div className="traveler-wrapper" aria-hidden="true">

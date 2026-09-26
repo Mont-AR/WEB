@@ -5,13 +5,13 @@ La referencia visual se reconstruye en capas independientes a una resolución l�
 ## Capas
 
 - **Three.js:** shader del cielo violeta y halo solar pulsante.
-- **Canvas 2D:** estrellas, sol a franjas, ciudad y reflejos móviles del río. Las luces urbanas parpadean.
-- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `river.png`, `trail.png` y tres posturas `explorer*.png`, generados con ImageGen a partir de la referencia. La cordillera permanece fija; las nubes se desplazan solo en horizontal.
+- **Canvas 2D:** estrellas, sol a franjas y ciudad. Las luces urbanas parpadean; el río permanece estático.
+- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `river.png`, `trail.png` y cinco posturas `explorer*.png`, generados con ImageGen a partir de la referencia. La cordillera y el río permanecen fijos; las nubes se desplazan solo en horizontal.
 - **Trazado de luces:** `tools/trace-city-lights.mjs` convierte solo las coordenadas y colores de las luces de la ciudad en datos TypeScript. El PNG original no se carga en la web.
-- **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos y alterna tres posturas de pies durante cada trayecto.
-- **HTML:** título, enlaces de contacto, iconos SVG navegables y contador del recorrido.
+- **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos y alterna cinco posturas de pies durante cada trayecto.
+- **HTML:** título, enlace de contacto, iconos SVG navegables, tarjetas de servicios y punto de partida, formulario y contador del recorrido.
 
-El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último icono. En pantallas angostas se usa una ruta ligeramente adaptada para mantenerlo visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
+El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último icono. Los hitos abren el contenido de cada paso; seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario prepara un correo en la aplicación local del visitante. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
 
 El texto del hero se revela una sola vez al aparecer, con un barrido escalonado de izquierda a derecha. Con movimiento reducido se muestra directamente.
 

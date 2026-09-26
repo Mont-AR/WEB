@@ -376,17 +376,6 @@ export function drawLightEffects(c: Context, time: number) {
   }
 }
 
-export function drawRiverEffects(c: Context, time: number) {
-  for (let i = 0; i < 92; i++) {
-    const y = 266 + noise(i * 31 + 4) * 89;
-    const [left, right] = riverBounds(y);
-    const span = Math.max(1, right - left);
-    const x = left + ((noise(i * 17 + 9) * span + time * (7 + noise(i) * 11)) % span);
-    const palette = y < 294 ? ["#ffb77c", "#fc6d94", "#eb5495"] : ["#46ccd4", "#2f8fc3", "#77e7d9"];
-    block(c, x, y, 3 + noise(i * 13) * (y > 306 ? 16 : 10), i % 8 === 0 ? 2 : 1, palette[i % palette.length]);
-  }
-}
-
 export function drawExplorer(c: Context, position: ExplorerPosition, time: number, moving: boolean) {
   const bob = moving ? Math.sin(time * 13) * 1.7 : Math.sin(time * 1.5) * .25;
   c.save();
