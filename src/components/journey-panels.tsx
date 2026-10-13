@@ -6,16 +6,21 @@ import { projectContent, serviceLabel, servicesContent, startingContent } from "
 export const services = servicesContent.list;
 export const startingPoints = startingContent.list;
 
+const cardIconByChoice: Record<string, string> = {
+  "web personalizada": "/card-icons/web.png",
+  wordpress: "/card-icons/wordpress.png",
+  "automatización": "/card-icons/automatizacion.png",
+  "sistemas de gestión": "/card-icons/sistemas-de-gestion.png",
+  bots: "/card-icons/bots.png",
+  "google workspace": "/card-icons/google-workspace.png",
+  Crear: "/card-icons/crear.png",
+  "Conectar y automatizar": "/card-icons/conectar-y-automatizar.png",
+  "Destrabar y mejorar": "/card-icons/destrabar-y-mejorar.png",
+};
+
 function ChoiceIcon({ kind }: { kind: string }) {
-  const common = { viewBox: "0 0 64 64", fill: "none", stroke: "currentColor", strokeWidth: 4, strokeLinejoin: "miter" as const, "aria-hidden": true as const };
-  if (kind === "web" || kind === "Crear") return <svg {...common}><path d="M7 9h50v46H7zM7 19h50M15 14h3m5 0h3m5 0h3M15 28h18v19H15zM38 29h11M38 37h11M38 45h8"/></svg>;
-  if (kind === "wordpress") return <svg {...common}><circle cx="32" cy="32" r="27"/><path d="m13 23 9 24 10-25 10 25 9-24M27 22h11"/></svg>;
-  if (kind === "automatización") return <svg {...common}><path d="M27 6h10l2 7 6 3 7-3 6 9-5 5 1 7 6 4-5 9-7-2-6 4-1 8H27l-1-8-6-4-7 2-5-9 6-4 1-7-5-5 5-9 7 3 6-3z"/><circle cx="32" cy="32" r="9"/></svg>;
-  if (kind === "sistemas de gestión") return <svg {...common}><ellipse cx="32" cy="13" rx="22" ry="7"/><path d="M10 13v14c0 4 10 7 22 7s22-3 22-7V13M10 27v14c0 4 10 7 22 7s22-3 22-7V27M10 41v10c0 4 10 7 22 7s22-3 22-7V41"/></svg>;
-  if (kind === "bots") return <svg {...common}><path d="M14 23h36v30H14zM32 23V11m-5 0h10M8 34h6m36 0h6M20 53v5m24-5v5"/><rect x="21" y="32" width="6" height="6" fill="currentColor"/><rect x="37" y="32" width="6" height="6" fill="currentColor"/><path d="M23 45h18"/></svg>;
-  if (kind === "google workspace") return <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M9 50V14l23 19 23-19v36" stroke="#53d7f5" strokeWidth="9"/><path d="M9 14 32 33 55 14" stroke="#f46761" strokeWidth="9"/><path d="M55 23v27" stroke="#60d181" strokeWidth="9"/><path d="M9 23v27" stroke="#4789ef" strokeWidth="9"/></svg>;
-  if (kind === "Conectar y automatizar") return <svg {...common}><path d="M29 8h8v10h-8zM7 46h10v10H7zM47 46h10v10H47zM33 18v13M12 46V34h40v12M33 31 12 46m21-15 19 15"/></svg>;
-  return <svg {...common}><path d="M4 51 23 25l8 8 14-22 15 40M24 48l7-13 8 13M10 56h44M49 10v15M49 10l9 4-9 4"/></svg>;
+  const src = cardIconByChoice[kind];
+  return src ? <img src={src} alt="" draggable={false} decoding="async" /> : null;
 }
 
 function ChoiceArrow() {

@@ -62,10 +62,12 @@ export function Journey() {
     const sceneImages=Array.from(document.querySelectorAll<HTMLImageElement>(".scene-layers img"));
     const physicalWidth=window.innerWidth*(window.devicePixelRatio||1);
     const tier=physicalWidth>=2560?"large":physicalWidth>=1500?"base":"small";
-    const explorer=new Image();
-    explorer.src=`/art/explorer${tier==="base"?".png":`-${tier}.webp`}`;
-    const explorerReady=waitForImage(explorer);
-    const loading=Promise.allSettled([document.fonts.ready,explorerReady,...sceneImages.map(waitForImage)]);
+    const explorers=["explorer-walk-idle","explorer-walk-right","explorer-walk-left"].map(name=>{
+      const image=new Image();
+      image.src=`/art/${name}${tier==="base"?".png":`-${tier}.webp`}`;
+      return image;
+    });
+    const loading=Promise.allSettled([document.fonts.ready,...explorers.map(waitForImage),...sceneImages.map(waitForImage)]);
     const fallback=new Promise<void>(resolve=>{timeout=setTimeout(resolve,12000);});
     Promise.race([loading,fallback]).then(()=>{clearTimeout(timeout);if(active)setAssetsReady(true);});
     return()=>{active=false;clearTimeout(timeout);};

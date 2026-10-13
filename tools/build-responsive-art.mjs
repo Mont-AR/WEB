@@ -7,9 +7,10 @@ const artDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "public", 
 const sources = [
   "cloud-bank", "mountain-range", "trail",
   "explorer", "explorer-step-a", "explorer-step-b", "explorer-step-c", "explorer-step-d",
+  "explorer-walk-idle", "explorer-walk-right", "explorer-walk-left",
 ];
 
-for (const name of sources) {
+for (const name of process.argv.length > 2 ? process.argv.slice(2) : sources) {
   const source = resolve(artDir, `${name}.png`);
   const { width } = await sharp(source).metadata();
   if (!width) throw new Error(`Missing dimensions for ${source}`);

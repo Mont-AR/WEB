@@ -27,13 +27,13 @@ const mobilePathPoints: ExplorerPosition[] = [
 
 type Props = { step: number; reducedMotion: boolean };
 
+const explorerFrames = ["explorer-walk-idle", "explorer-walk-right", "explorer-walk-left"] as const;
 const spriteCrops = [
-  [308, 240, 633, 1018],
-  [300, 145, 629, 1140],
-  [298, 216, 606, 1027],
-  [308, 205, 623, 1036],
-  [292, 240, 641, 1004],
+  [367, 199, 437, 963],
+  [339, 152, 558, 1086],
+  [313, 109, 576, 1192],
 ] as const;
+const spriteAnchorX = 620;
 
 const artVariants = {
   "cloud-bank": [1076, 2152, 4304],
@@ -54,17 +54,19 @@ function ArtImage({ name, className, sizes }: { name: keyof typeof artVariants; 
 }
 
 function paintExplorer(c: CanvasRenderingContext2D, images: HTMLImageElement[], position: ExplorerPosition, time: number, moving: boolean) {
-  const frame = moving ? [0, 3, 1, 3, 0, 4, 2, 4][Math.floor(time * 10) % 8] : 0;
+  const frame = moving ? [1, 0, 2, 0][Math.floor(time * 7) % 4] : 0;
   const image = images[frame]?.complete && images[frame]?.naturalWidth ? images[frame] : images[0];
   if (!image?.complete || !image.naturalWidth) {
     drawExplorer(c, position, time, moving);
     return;
   }
   const { x, y, scale } = position;
-  const bob = moving ? Math.sin(time * 13) * 1.7 : Math.sin(time * 1.5) * .25;
   const [sx, sy, sw, sh] = spriteCrops[images.indexOf(image)];
   const sourceScale = image.naturalWidth / 1159;
-  c.drawImage(image, sx * sourceScale, sy * sourceScale, sw * sourceScale, sh * sourceScale, Math.round(x - 27.5 * scale), Math.round(y - 88 * scale + bob), 55 * scale, 88 * scale);
+  const height = 88 * scale;
+  const width = height * sw / sh;
+  const anchor = height * (spriteAnchorX - sx) / sh;
+  c.drawImage(image, sx * sourceScale, sy * sourceScale, sw * sourceScale, sh * sourceScale, Math.round(x - anchor), Math.round(y - height), width, height);
 }
 
 function StarField({ reducedMotion }: { reducedMotion: boolean }) {
@@ -127,6 +129,7 @@ export function PixelScene({ step, reducedMotion }: Props) {
   const explorerImagesRef = useRef<HTMLImageElement[]>([]);
   const positionRef = useRef<ExplorerPosition>({ ...pathPoints[0] });
   const movingRef = useRef(false);
+  const walkStartedRef = useRef(0);
   const [isMobile, setIsMobile] = useState(false);
   const [spriteTier, setSpriteTier] = useState<"small" | "base" | "large" | null>(null);
   const lastMobileRef = useRef(false);
@@ -196,18 +199,17 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const travelerContext = travelerCanvas?.getContext("2d", { alpha: true });
     if (!travelerContext || !spriteTier) return;
     travelerContext.imageSmoothingEnabled = false;
-    const explorers = [new Image(), new Image(), new Image(), new Image(), new Image()];
+    const explorers = explorerFrames.map(() => new Image());
     explorerImagesRef.current = explorers;
 
     let frame = 0;
-    const start = performance.now();
     const tick = () => {
-      const time = reducedMotion ? 0 : (performance.now() - start) / 1000;
+      const time = reducedMotion ? 0 : (performance.now() - walkStartedRef.current) / 1000;
       travelerContext.clearRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
       paintExplorer(travelerContext, explorers, positionRef.current, time, movingRef.current);
       if (!reducedMotion) frame = requestAnimationFrame(tick);
     };
-    ["explorer", "explorer-step-a", "explorer-step-b", "explorer-step-c", "explorer-step-d"].forEach((name, index) => {
+    explorerFrames.forEach((name, index) => {
       explorers[index].onload = () => { if (reducedMotion) tick(); };
       explorers[index].src = `/art/${name}${spriteTier === "base" ? ".png" : `-${spriteTier}.webp`}`;
     });
@@ -219,7 +221,9 @@ export function PixelScene({ step, reducedMotion }: Props) {
     const points = isMobile ? mobilePathPoints : pathPoints;
     const target = { ...points[Math.min(3, Math.max(0, step))] };
     gsap.killTweensOf(positionRef.current);
-    if (reducedMotion || lastMobileRef.current !== isMobile) {
+    const current = positionRef.current;
+    const alreadyAtTarget = Math.abs(current.x - target.x) < .01 && Math.abs(current.y - target.y) < .01 && Math.abs(current.scale - target.scale) < .01;
+    if (reducedMotion || lastMobileRef.current !== isMobile || alreadyAtTarget) {
       Object.assign(positionRef.current, target);
       movingRef.current = false;
       const context = travelerRef.current?.getContext("2d");
@@ -232,6 +236,7 @@ export function PixelScene({ step, reducedMotion }: Props) {
     }
     lastMobileRef.current = isMobile;
     movingRef.current = true;
+    walkStartedRef.current = performance.now();
     gsap.to(positionRef.current, {
       ...target,
       duration: 1.1,

@@ -9,11 +9,11 @@ La referencia visual se reconstruye en capas independientes. El explorador conse
 - **Canvas de estrellas:** puntos luminosos a resolución de pantalla con tamaños y brillos variables, separados del pixel art del paisaje.
 - **Canvas de ciudad:** dos grupos lejanos de edificios bajos forman una silueta oscura en el valle; algunas ventanas cálidas parpadean suavemente.
 - **Río SVG:** una curva estrecha y estática en tonos violeta y azul, con pocos reflejos discretos.
-- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `trail.png` y cinco posturas `explorer*.png`, generados a partir de la referencia. La cordillera permanece fija; las nubes se desplazan solo en horizontal.
+- **Assets transparentes:** `public/art/cloud-bank.png`, `mountain-range.png`, `trail.png` y tres posturas `explorer-walk-*.png` (parado, pie derecho y pie izquierdo adelante). La cordillera permanece fija; las nubes se desplazan solo en horizontal.
 - **Resolución adaptable:** paisaje y explorador ofrecen tamaños pequeño, original y grande. Las imágenes del paisaje usan `srcSet`/`sizes`; el canvas del explorador elige según ancho físico de pantalla. `tools/build-responsive-art.mjs` genera las variantes WebP sin pérdida.
 - **Sendero:** se muestra completo, incluidos los arbustos de su izquierda, sin máscara de recorte ni arbusto superpuesto.
 - **Trazado de luces:** `tools/trace-city-lights.mjs` convierte solo las coordenadas y colores de las luces de la ciudad en datos TypeScript. El PNG original no se carga en la web.
-- **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos y alterna cinco posturas de pies durante cada trayecto.
+- **Canvas frontal:** el explorador avanza con GSAP entre el inicio y tres hitos. Durante cada trayecto alterna pie derecho, postura neutra y pie izquierdo a 7 cuadros por segundo; las tres siluetas comparten anclaje de torso y altura. Al detenerse vuelve a la postura neutra.
 - **HTML:** título, enlace de contacto, iconos SVG navegables, tarjetas de servicios y punto de partida, formulario y contador del recorrido.
 
 El scroll usa cuatro posiciones con `scroll-snap`: estado inicial y tres avances. El caminante se detiene en el último hito. En escritorio, los iconos abren el contenido de cada paso; en móvil se ocultan y el recorrido sigue mediante scroll, tarjetas y botón principal. Seleccionar un servicio o punto de partida lo precarga en el formulario. El botón principal lleva al último paso. El formulario envía los datos a una ruta de Next.js que entrega el correo mediante Resend. En pantallas angostas se usa una ruta ligeramente adaptada para mantener al explorador visible. `prefers-reduced-motion` inmoviliza la animación ambiental y los desplazamientos del personaje.
