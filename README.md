@@ -13,10 +13,10 @@ El recorrido es una experiencia controlada por scroll con cuatro etapas: **01 Ho
 
 Los tres hitos de la ilustración marcan las transiciones, en el fotograma en que el explorador toca cada objeto:
 
-| Transición | Hito | Aproximación | Contacto (cambio de etapa) | Recogida completa |
+| Transición | Hito | Aproximación | Contacto (cambio de etapa) | Guardado en la mochila / activación |
 | --- | --- | --- | --- | --- |
-| Home → Servicios | engranaje | 1,95 s · f117 | 2,80 s · f168 | 3,18 s · f191 |
-| Servicios → Necesidad | nodos | 5,20 s · f312 | 6,05 s · f363 | 6,43 s · f386 |
+| Home → Servicios | engranaje | 1,95 s · f117 | 2,80 s · f168 | 3,25 s · f195 |
+| Servicios → Necesidad | nodos | 5,20 s · f312 | 6,05 s · f363 | 6,50 s · f390 |
 | Necesidad → Proyecto | interfaz de la cima | 9,90 s · f594 | 10,80 s · f648 | 10,95 s · f657 |
 
 (fotogramas a 60 fps del máster). Los tiempos viven en un único archivo, `src/lib/journey-timeline.json`, que usan tanto el generador del video como la web (`src/lib/journey-config.ts`, donde también se ajustan el alto de scroll por etapa y la velocidad de reproducción).
@@ -28,7 +28,7 @@ El contador inferior (`01 / 04 — Home`…) funciona también como navegación 
 `tools/journey/` genera la animación a partir de `tools/journey/reference/montar-reference.png` (la ilustración sin textos):
 
 ```powershell
-node tools/journey/prepare-layers.mjs   # máscaras, placas limpias y recortes del explorador → tools/journey/layers/
+node tools/journey/prepare-layers.mjs   # placas limpias, poses del explorador y máscara del cielo → tools/journey/layers/
 node tools/journey/build-html.mjs       # out/montar-explorer-journey.html (autocontenido, sin red)
 node tools/journey/render-server.mjs    # vista previa en http://127.0.0.1:4317/
 ```

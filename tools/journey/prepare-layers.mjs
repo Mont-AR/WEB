@@ -388,7 +388,9 @@ await fs.mkdir(OUT, { recursive: true });
 const meta = { width: W, height: H };
 
 // ---------------------------------------------------------------- explorador
-// Silueta trazada sobre la referencia (coordenadas de la imagen original 1672×941).
+// ---------------------------------------------------------------- explorador original
+// Silueta trazada sobre la referencia (coordenadas de la imagen original 1672×941): se retira de
+// la ilustración para que el explorador animado ocupe su lugar.
 const E = (pts) => pts.map(([x, y]) => [x + 1050, y + 555]);
 const silhouette = polyMask(E([
   [48, 24], [55, 14], [65, 10], [85, 9], [100, 11], [108, 18], [110, 28], [104, 36], [99, 44], [98, 58], [100, 64], [106, 70], [109, 78],
@@ -396,20 +398,6 @@ const silhouette = polyMask(E([
   [100, 203], [103, 210], [103, 229], [92, 234], [74, 233], [70, 222], [64, 222], [62, 236], [56, 246], [40, 247], [32, 239], [30, 222],
   [36, 205], [44, 196], [46, 175], [44, 162], [30, 161], [20, 154], [17, 140], [15, 120], [15, 80], [19, 67], [28, 61], [42, 59], [48, 57], [47, 45], [46, 35],
 ]));
-const armPoly = polyMask(E([[83, 75], [96, 74], [104, 79], [109, 88], [111, 106], [118, 117], [125, 125], [131, 133], [131, 152], [118, 155], [108, 149], [100, 142], [93, 128], [87, 120], [84, 105]]));
-const backpackPoly = polyMask(E([[14, 64], [21, 58], [61, 57], [67, 66], [69, 140], [61, 147], [19, 147], [14, 136]]));
-const legSplit = E([[93, 156], [86, 182], [73, 214], [66, 250]]);
-const leftOfSplit = polyMask([[1000, 700], ...legSplit, [1000, 810]]);
-
-const head = and(silhouette, rectMask(1090, 555, 1170, 614));
-const arm = and(silhouette, armPoly);
-// Piernas: debajo de la chaqueta; por debajo de la etiqueta de la mochila incluye toda la bota.
-const legs = and(silhouette, or(rectMask(1086, 711, 1170, 810), rectMask(1060, 716, 1170, 810)));
-const backLeg = and(legs, leftOfSplit);
-const frontLeg = minus(legs, leftOfSplit);
-const torsoCore = minus(minus(minus(silhouette, head), arm), legs);
-const backpack = and(torsoCore, backpackPoly);
-const armHole = and(arm, rectMask(1100, 600, 1147, 720));
 
 // Placa limpia: se reconstruye solo el área del explorador (más su borde) y la de los iconos.
 const cyan = where((r, g, b) => g > 150 && b > 150 && g > r + 40);
@@ -454,6 +442,8 @@ const SKY_LIMIT = 336;
 const cloudCore = where((r, g, b, x, y) => y < SKY_LIMIT && r > 128 && r > g * 1.55 && r > b * .95);
 const cloudGrown = dilate(cloudCore, 2);
 const cc = components(cloudGrown, 260);
+// los destellos grandes tienen un halo magenta compacto: no son nubes
+cc.comps = cc.comps.filter(c => c.x1 - c.x0 >= 60);
 const clouds = [];
 const cloudMask = newMask();
 for (const c of cc.comps) {
@@ -476,7 +466,50 @@ const brightSky = where((r, g, b, x, y) => y < SKY_LIMIT + 20 && Math.max(r, g, 
 const skyAllow = and(not(or(dilate(cloudGrown, 2), dilate(brightSky, 3))), rectMask(0, 0, W - 1, SKY_LIMIT + 10));
 console.log(`nubes: ${clouds.length} bancos, ${count(reveal)} px de cielo a reconstruir`);
 plate = inpaint(plate, reveal, skyAllow, { half: 3, radius: 40, label: "cielo" });
+
+// ---------------------------------------------------------------- estrellas
+// Las estrellas pixeladas de la ilustración se retiran del cielo; el motor dibuja en su lugar un
+// cielo estrellado realista, visible solo donde hay cielo despejado (máscara suave).
+const STAR_LIMIT = 400;
+const skyLum = (i) => plate[i * 3] * .3 + plate[i * 3 + 1] * .59 + plate[i * 3 + 2] * .11;
+const starPix = newMask();
+// zonas que no son cielo abierto: nubes (con margen), icono de la cima y sol
+// (solo bancos de nubes grandes: los destellos magenta también pasan el filtro de color de nube)
+const cloudBanks = newMask();
+for (const c of cc.comps) for (const p of c.pixels) cloudBanks[p] = 1;
+const notSky = or(dilate(cloudBanks, 4), dilate(summitZone, 8), rectMask(1080, 300, 1380, STAR_LIMIT));
+for (let y = 3; y < STAR_LIMIT; y++) for (let x = 3; x < W - 3; x++) {
+  const i = at(x, y);
+  if (notSky[i]) continue;
+  // estrellas blancas, azuladas o violetas (el rosa de las nubes queda fuera)
+  if (plate[i * 3 + 2] < plate[i * 3] * .85) continue;
+  // más claro que la mediana local del cielo: estrella o destello
+  const ring = [];
+  for (let d = -3; d <= 3; d += 3) for (let e = -3; e <= 3; e += 3) if (d || e) ring.push(skyLum(at(x + d, y + e)));
+  ring.sort((a, b) => a - b);
+  if (skyLum(i) - ring[4] > 22) starPix[i] = 1;
+}
+// destellos grandes: núcleo muy brillante con brazos en cruz y halo; se retiran con más margen
+const bigCore = and(where((r, g, b, x, y) => y < STAR_LIMIT && Math.max(r, g, b) > 215 && b >= r * .8), not(notSky));
+const starFill = minus(or(dilate(starPix, 2), dilate(bigCore, 32)), notSky);
+const starAllow = and(not(or(dilate(starFill, 1), dilate(cloudBanks, 1), summitZone)), rectMask(0, 0, W - 1, STAR_LIMIT + 20));
+console.log(`estrellas pixeladas: ${count(starPix)} px`);
+plate = inpaint(plate, starFill, starAllow, { half: 2, radius: 30, label: "estrellas" });
 await saveRGB("plate.png", plate);
+{
+  // Máscara del cielo despejado: sin nubes (borde suave), sin el icono de la cima ni el sol,
+  // y desvanecida hacia el horizonte, donde el resplandor del atardecer apaga las estrellas.
+  let cloudSoft = dilate(cloudBanks, 1);
+  const soft = new Float32Array(N);
+  for (let k = 0; k < 4; k++) { for (let i = 0; i < N; i++) if (cloudSoft[i] && !soft[i]) soft[i] = 1 - k * .22; cloudSoft = dilate(cloudSoft, 1); }
+  meta.sky = await saveSprite("sky-mask.png", { x: 0, y: 0, w: W, h: STAR_LIMIT }, (x, y) => {
+    const i = at(x, y);
+    const fade = Math.max(0, Math.min(1, (360 - y) / 150));
+    const block = summitZone[i] || (x > 1080 && x < 1380 && y > 300) ? 0 : 1;
+    const a = (1 - soft[i]) * fade * block;
+    return a > 0 ? [255, 255, 255, a * 255] : null;
+  });
+}
 meta.clouds = [];
 for (const cl of clouds) {
   const f = `cloud-${meta.clouds.length}.png`;
@@ -485,22 +518,11 @@ for (const cl of clouds) {
 }
 meta.skyLimit = SKY_LIMIT;
 
-// ---------------------------------------------------------------- partes del explorador
-// Alfa: interior sólido; en el borde exterior, mate por diferencia con la placa limpia.
-const inner = erode(silhouette, 1), outerBand = minus(dilate(silhouette, 2), inner);
-const partLabel = new Uint8Array(N);
-const parts = { torso: 1, head: 2, arm: 3, backLeg: 4, frontLeg: 5 };
-for (let i = 0; i < N; i++) {
-  if (backLeg[i]) partLabel[i] = 4; else if (frontLeg[i]) partLabel[i] = 5; else if (arm[i]) partLabel[i] = 3; else if (head[i]) partLabel[i] = 2; else if (torsoCore[i]) partLabel[i] = 1;
-}
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-  const i = at(x, y);
-  if (!outerBand[i] || partLabel[i]) continue;
-  let best = 0, bd = 999;
-  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const l = partLabel[at(xx, yy)]; const d = dx * dx + dy * dy; if (l && silhouette[at(xx, yy)] && d < bd) { bd = d; best = l; } }
-  partLabel[i] = best;
-}
-// Alfa mínimo que reproduce exactamente el original sobre la placa (mate por diferencia).
+// ---------------------------------------------------------------- explorador (rig limpio)
+// El explorador ya no se recorta de la ilustración: se arma con el sprite de pie dibujado aparte
+// (mismo diseño, fondo transparente). Se separa en partes articuladas (piernas en muslo y
+// pantorrilla con bota, brazo cercano en brazo y antebrazo, mano lejana, torso con cabeza y
+// mochila) para animar una marcha alternada, el balanceo de los brazos y el gesto de guardar.
 const minAlpha = (i) => {
   let a = 0;
   for (let c = 0; c < 3; c++) {
@@ -509,41 +531,106 @@ const minAlpha = (i) => {
   }
   return Math.ceil(a * 255);
 };
-// Solo el borde de 2 px lleva alfa parcial: fuera de él no viaja ningún píxel del fondo.
-const alphaAt = (i) => inner[i] ? 255 : exEdge[i] ? minAlpha(i) : 0;
 // Color "despremultiplicado" contra la placa para que la composición reproduzca el original.
 const colorAt = (i, a) => {
   if (a >= 255 || a <= 0) return [src[i * 3], src[i * 3 + 1], src[i * 3 + 2], a];
   const k = a / 255;
   return [0, 1, 2].map(c => (src[i * 3 + c] - (1 - k) * Math.round(plate[i * 3 + c])) / k).concat(a);
 };
-// Hueco del brazo dentro del torso: se rellena con la textura de la chaqueta.
-const torsoSrc = and(torsoCore, not(backpack));
-const torsoFilled = inpaint(src, armHole, erode(torsoSrc, 1), { half: 2, radius: 24, label: "chaqueta" });
-
-meta.explorer = { parts: {} };
-for (const [name, id] of Object.entries(parts)) {
-  const m = newMask();
-  for (let i = 0; i < N; i++) if (partLabel[i] === id || (id === 1 && armHole[i])) m[i] = 1;
-  const box = bbox(m);
-  meta.explorer.parts[name] = await saveSprite(`explorer-${name}.png`, box, (x, y) => {
-    const i = at(x, y);
-    if (!m[i]) return null;
-    if (id === 1 && armHole[i]) return [torsoFilled[i * 3], torsoFilled[i * 3 + 1], torsoFilled[i * 3 + 2], 255];
-    const a = alphaAt(i);
-    return a ? colorAt(i, a) : null;
-  });
-}
 {
-  const m = and(backpack, inner);
-  meta.explorer.parts.backpack = await saveSprite("explorer-backpack.png", bbox(m), (x, y) => { const i = at(x, y); return m[i] ? [src[i * 3], src[i * 3 + 1], src[i * 3 + 2], 255] : null; });
-  // Luz de la pantalla sobre el entorno: diferencia positiva con la placa, se suma con "lighter".
-  meta.explorer.glow = await saveSprite("explorer-glow.png", bbox(packHalo), (x, y) => {
-    const i = at(x, y);
-    if (!packHalo[i]) return null;
-    const d = [0, 1, 2].map(c => Math.max(0, src[i * 3 + c] - Math.round(plate[i * 3 + c])));
-    return Math.max(...d) > 0 ? [...d, 255] : null;
-  });
+  const isScreen = (r, g, b) => g > 190 && b > 190 && r < 140;
+  // pantalla de la mochila y colores del explorador en la ilustración (para escala y color)
+  const inner = erode(silhouette, 2);
+  let sx0 = W, sx1 = 0, sy0 = H, sy1 = 0;
+  const orig = [[], [], []];
+  for (let i = 0; i < N; i++) {
+    if (!inner[i]) continue;
+    const x = i % W, y = (i / W) | 0, r = src[i * 3], g = src[i * 3 + 1], b = src[i * 3 + 2];
+    if (isScreen(r, g, b)) { sx0 = Math.min(sx0, x); sx1 = Math.max(sx1, x); sy0 = Math.min(sy0, y); sy1 = Math.max(sy1, y); }
+    else { orig[0].push(r); orig[1].push(g); orig[2].push(b); }
+  }
+  const stat = (v) => { const m = v.reduce((s, n) => s + n, 0) / v.length; return { m, s: Math.sqrt(v.reduce((s, n) => s + (n - m) ** 2, 0) / v.length) || 1 }; };
+  const target = orig.map(stat);
+
+  const file = path.join(ROOT, "reference", "explorer", "explorer-walk-idle.png");
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const SW = info.width, SH = info.height, px = new Uint8ClampedArray(data);
+  const sat = (x, y) => (y * SW + x) * 4;
+  // escala: la pantalla de la mochila mide lo mismo que en la ilustración
+  let qx0 = SW, qx1 = 0, qy0 = SH, qy1 = 0;
+  const own = [[], [], []];
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+    const s = sat(x, y); if (px[s + 3] < 200) continue;
+    if (isScreen(px[s], px[s + 1], px[s + 2])) { qx0 = Math.min(qx0, x); qx1 = Math.max(qx1, x); qy0 = Math.min(qy0, y); qy1 = Math.max(qy1, y); }
+    else for (let c = 0; c < 3; c++) own[c].push(px[s + c]);
+  }
+  const kScene = (sx1 - sx0 + 1) / (qx1 - qx0 + 1);   // sprite → ilustración a escala 1
+  const K = kScene * 2;                                 // las partes se guardan al doble de esa escala
+  // ajuste de color hacia la luz de la escena (la pantalla conserva su cian)
+  const source = own.map(stat);
+  for (let i = 0; i < SW * SH; i++) {
+    const s = i * 4; if (px[s + 3] < 24 || isScreen(px[s], px[s + 1], px[s + 2])) continue;
+    for (let c = 0; c < 3; c++) { const v = px[s + c]; const t = (v - source[c].m) * (target[c].s / source[c].s) + target[c].m; px[s + c] = v + (t - v) * .8; }
+  }
+  // partes (coordenadas del sprite de pie)
+  const SPLIT = 552;
+  const inRect = (x, y, r) => x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3];
+  const ARM_UP = [650, 455, 790, 650], ARM_LOW = [640, 625, 815, 810], FAR_HAND = [355, 700, 462, 818];
+  const isArm = (x, y) => (x >= 650 && y >= 455 && y <= 720) || inRect(x, y, [700, 690, 815, 810]);
+  const defs = {
+    farShin: (x, y) => x < SPLIT && y >= 898 && y <= 1180,
+    farThigh: (x, y) => x < SPLIT && x > 470 && y >= 755 && y <= 918,
+    nearShin: (x, y) => x >= SPLIT && y >= 898 && y <= 1180,
+    nearThigh: (x, y) => x >= SPLIT && x < 690 && y >= 755 && y <= 918,
+    farHand: (x, y) => inRect(x, y, FAR_HAND),
+    armUpper: (x, y) => isArm(x, y) && inRect(x, y, ARM_UP),
+    armLower: (x, y) => isArm(x, y) && inRect(x, y, ARM_LOW),
+    torso: (x, y) => y < 772 && !isArm(x, y) && !inRect(x, y, FAR_HAND),
+  };
+  // detrás del brazo: el costado de la chaqueta se prolonga con el color de cada fila
+  const torsoFill = (x, y) => {
+    if (!(x >= 650 && x <= 708 && y >= 470 && y <= 745)) return null;
+    for (let xx = 649; xx > 600; xx--) { const s = sat(xx, y); if (px[s + 3] > 200) return [px[s], px[s + 1], px[s + 2], 255]; }
+    return null;
+  };
+  const S = (v) => v * K;
+  meta.explorer = {
+    scale: K / kScene,   // las partes están al doble de la escala de escena
+    parts: {},
+    // pivotes en coordenadas de las partes escaladas
+    pivots: {
+      farHip: { x: S(527), y: S(785) }, farKnee: { x: S(527), y: S(908) }, farSole: { x: S(505), y: S(1160) },
+      nearHip: { x: S(607), y: S(785) }, nearKnee: { x: S(607), y: S(908) }, nearSole: { x: S(625), y: S(1160) },
+      shoulder: { x: S(690), y: S(500) }, elbow: { x: S(728), y: S(640) }, hand: { x: S(765), y: S(760) },
+      neck: { x: S(640), y: S(420) }, hip: { x: S(590), y: S(780) },
+      screen: { x: S((qx0 + qx1) / 2), y: S((qy0 + qy1) / 2), w: S(qx1 - qx0), h: S(qy1 - qy0) },
+      ground: S(1160),
+    },
+    // centro de la pantalla respecto del punto de apoyo en la ilustración (escala de escena)
+    screenOffset: { x: (sx0 + sx1) / 2 - 1118, y: (sy0 + sy1) / 2 - 795 },
+  };
+  for (const [name, test] of Object.entries(defs)) {
+    let x0 = SW, y0 = SH, x1 = 0, y1 = 0;
+    const keep = new Uint8Array(SW * SH);
+    for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+      const s = sat(x, y);
+      const filled = name === "torso" && torsoFill(x, y);
+      if ((px[s + 3] >= 24 && test(x, y)) || filled) { keep[y * SW + x] = 1; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    }
+    // margen para que el remuestreo no recorte el borde
+    x0 = Math.max(0, x0 - 4); y0 = Math.max(0, y0 - 4); x1 = Math.min(SW - 1, x1 + 4); y1 = Math.min(SH - 1, y1 + 4);
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, buf = Buffer.alloc(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const gx = x + x0, gy = y + y0; if (!keep[gy * SW + gx]) continue;
+      const s = sat(gx, gy), d = (y * w + x) * 4;
+      const f = name === "torso" && px[s + 3] < 24 ? torsoFill(gx, gy) : null;
+      if (f) buf.set(f, d); else { buf[d] = px[s]; buf[d + 1] = px[s + 1]; buf[d + 2] = px[s + 2]; buf[d + 3] = px[s + 3]; }
+    }
+    const ow = Math.max(1, Math.round(w * K)), oh = Math.max(1, Math.round(h * K));
+    const out = `explorer-${name}.png`;
+    await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(ow, oh, { kernel: "lanczos3" }).png({ compressionLevel: 9 }).toFile(path.join(OUT, out));
+    meta.explorer.parts[name] = { file: out, x: S(x0), y: S(y0), w: ow, h: oh };
+  }
 }
 
 // ---------------------------------------------------------------- iconos
@@ -601,24 +688,5 @@ meta.lights.groupsFile = "city-light-groups.png";
 await saveSprite("city-light-groups.png", lightBox, (x, y) => { const g = lightGroup[at(x, y)]; return g ? [g * 40, 0, 0, 255] : null; });
 meta.lights.count = lc.comps.length;
 
-// ---------------------------------------------------------------- estrellas
-const starCore = where((r, g, b, x, y) => y < SKY_LIMIT && Math.max(r, g, b) > 175 && !(r > g * 1.4));
-const sc = components(and(dilate(starCore, 2), not(cloudGrown)), 3);
-meta.stars = [];
-for (const c of sc.comps) {
-  const pad = c.size > 60 ? 4 : 2;
-  const box = { x: Math.max(0, c.x0 - pad), y: Math.max(0, c.y0 - pad), w: c.x1 - c.x0 + 1 + pad * 2, h: c.y1 - c.y0 + 1 + pad * 2 };
-  let bg = [255, 255, 255], bl = 999;
-  for (let y = box.y; y < box.y + box.h; y++) for (let x = box.x; x < box.x + box.w; x++) { const i = at(x, y); if (lum(i) < bl) { bl = lum(i); bg = [src[i * 3], src[i * 3 + 1], src[i * 3 + 2]]; } }
-  meta.stars.push({ ...box, bg, big: c.size > 60 });
-}
-meta.starSprite = await saveSprite("stars.png", { x: 0, y: 0, w: W, h: SKY_LIMIT + 10 }, (x, y) => {
-  const i = at(x, y);
-  const s = meta.stars.find(st => x >= st.x && y >= st.y && x < st.x + st.w && y < st.y + st.h);
-  if (!s) return null;
-  const k = Math.max(0, Math.min(1, (lum(i) - Math.max(...s.bg) - 15) / 140));
-  return k > 0 ? [src[i * 3], src[i * 3 + 1], src[i * 3 + 2], k * 255] : null;
-});
-
 await fs.writeFile(path.join(OUT, "layers.json"), JSON.stringify(meta, null, 1));
-console.log(`listo: ${meta.clouds.length} nubes, ${meta.route.dots.length} puntos de ruta, ${meta.lights.count} luces, ${meta.stars.length} estrellas`);
+console.log(`listo: ${meta.clouds.length} nubes, ${meta.route.dots.length} puntos de ruta, ${meta.lights.count} luces, ${Object.keys(meta.explorer.parts).length} partes del explorador`);

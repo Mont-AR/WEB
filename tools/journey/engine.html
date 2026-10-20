@@ -88,18 +88,23 @@ function prepareLayers() {
     x.putImageData(d, 0, 0); dx.putImageData(dd, 0, 0);
     layers.lightGroups.push({ bright: c, dim });
   }
-  // Estrellas: versión "apagada" con el color del cielo circundante.
-  const S = LAYERS.starSprite;
-  const sc = makeCanvas(S.w, S.h).getContext("2d", { willReadFrequently: true });
-  sc.drawImage(img[S.file], 0, 0);
-  const sd = sc.getImageData(0, 0, S.w, S.h);
-  for (const st of LAYERS.stars) for (let y = st.y; y < st.y + st.h; y++) for (let x = st.x; x < st.x + st.w; x++) {
-    const i = (y * S.w + x) * 4; if (!sd.data[i + 3]) continue;
-    sd.data[i] = st.bg[0]; sd.data[i + 1] = st.bg[1]; sd.data[i + 2] = st.bg[2];
-  }
-  layers.starsDim = makeCanvas(S.w, S.h); layers.starsDim.getContext("2d").putImageData(sd, 0, 0);
+  // Cielo estrellado realista (no pixel art): muchas estrellas pequeñas con brillo de ley de
+  // potencias, temperatura de color variada y unas pocas brillantes con halo suave. Solo se ven
+  // donde la máscara indica cielo despejado.
   const rnd = mulberry32(11);
-  layers.stars = LAYERS.stars.map((st) => ({ ...st, twinkle: st.big || rnd() < .55, f: .35 + rnd() * .55, ph: rnd() * Math.PI * 2, amp: st.big ? .5 : .28 + rnd() * .2 }));
+  const S = LAYERS.sky;
+  layers.starCanvas = makeCanvas(S.w, S.h);
+  const tints = [[200, 214, 255], [255, 255, 255], [255, 244, 232], [255, 222, 196], [186, 204, 255], [255, 255, 255]];
+  layers.stars = Array.from({ length: 1150 }, () => {
+    const b = .1 + .9 * rnd() ** 5;
+    return {
+      x: rnd() * S.w, y: S.h * rnd() ** 1.35, b,
+      r: .35 + b * 1.05, tint: tints[Math.floor(rnd() * tints.length)],
+      f: .25 + rnd() * 1.1, ph: rnd() * Math.PI * 2, amp: .12 + rnd() * .3,
+    };
+  });
+  // estrellas destacadas, con halo
+  for (let k = 0; k < 9; k++) layers.stars.push({ x: rnd() * S.w, y: S.h * .7 * rnd() ** 1.2, b: .9 + rnd() * .1, r: 1.25 + rnd() * .5, tint: tints[Math.floor(rnd() * tints.length)], f: .2 + rnd() * .5, ph: rnd() * Math.PI * 2, amp: .18, halo: 5 + rnd() * 5 });
   layers.lightOsc = Array.from({ length: 6 }, () => ({ f1: .18 + rnd() * .35, f2: .6 + rnd() * .9, ph: rnd() * Math.PI * 2, amp: .3 + rnd() * .25 }));
 }
 
@@ -200,9 +205,22 @@ function speedAt(t) {
   return 0;
 }
 
+// ============================================================ explorador: rig y cinemática
+// Partes del sprite de pie (fondo transparente) articuladas en caderas, rodillas, hombro y codo.
+// Coordenadas de las partes: el doble de la escala de escena (EX.scale).
+const EX = LAYERS.explorer, PV = EX.pivots;
+const GAIT = { thigh: 17, knee: 36, stanceKnee: 5, arm: 15, elbow: 10, elbowSwing: 14, farHand: 18 };
+function rotAbout(m, p, deg) { return m.translate(p.x, p.y).rotate(deg).translate(-p.x, -p.y); }
+// Pierna: el muslo gira en la cadera (adelante = antihorario) y la pantorrilla en la rodilla.
+function legChain(side, fwd, flex) {
+  const thigh = rotAbout(new DOMMatrix(), PV[side + "Hip"], -fwd);
+  const shin = rotAbout(thigh, PV[side + "Knee"], flex);
+  return { thigh, shin, sole: shin.transformPoint(new DOMPoint(PV[side + "Sole"].x, PV[side + "Sole"].y)) };
+}
+// Longitud de un ciclo (dos pasos) coherente con la pierna, para que el pie de apoyo no patine.
+const STRIDE = 2 * Math.abs(legChain("near", GAIT.thigh, GAIT.stanceKnee).sole.x - legChain("near", -GAIT.thigh, GAIT.stanceKnee).sole.x) / EX.scale;
+
 // ============================================================ simulación (paso fijo de 60 Hz)
-const STRIDE = 92;                 // longitud de un ciclo completo (dos pasos) en unidades de suelo
-const ALPHA = Math.asin(7 / 16);   // fase inicial: reproduce la postura original
 const PARTICLES = 48;
 const ICON_POS = {
   gear: { x: LAYERS.gear.x + LAYERS.gear.w / 2, y: LAYERS.gear.y + LAYERS.gear.h * .42 },
@@ -210,28 +228,34 @@ const ICON_POS = {
 };
 function initialState() {
   return {
-    step: 0, t: 0, ground: 0, v: 0, phase: 0,
-    lean: 0, leanV: 0, pack: 0, packV: 0, bob: 0, prevBob: 0, bobV: 0,
-    collected: { gear: false, nodes: false }, indicators: 0, flash: 0,
+    step: 0, t: 0, ground: 0, v: 0, phase: 0, lean: 0, leanV: 0,
+    collected: { gear: false, nodes: false }, stored: { gear: false, nodes: false }, indicators: 0, flash: 0,
     events: [],
-    particles: Array.from({ length: PARTICLES }, () => ({ live: false, t0: 0, dur: 0, x0: 0, y0: 0, cx: 0, cy: 0, target: "", size: 2, color: 0, x: 0, y: 0, a: 0 })),
+    particles: Array.from({ length: PARTICLES }, () => ({ live: false, t0: 0, dur: 0, x0: 0, y0: 0, tx: 0, ty: 0, size: 2, color: 0, x: 0, y: 0, a: 0 })),
   };
 }
 const rnd = mulberry32(20261020);
-function spawnParticles(st, icon, from) {
-  const count = icon === "gear" ? 14 : 16;
+// Destello al guardar la herramienta: pocas partículas que salen de la mochila y se apagan.
+function burstParticles(st, at, icon) {
+  const count = icon === "gear" ? 12 : 14;
   let n = 0;
   for (const p of st.particles) {
     if (p.live || n >= count) continue;
-    p.live = true; p.t0 = st.t + n * .012; p.dur = .3 + rnd() * .14;
-    p.x0 = from.x + (rnd() - .5) * 14; p.y0 = from.y + (rnd() - .5) * 12;
-    // la segunda recogida describe un arco más alto
-    p.cx = (rnd() - .5) * 26; p.cy = (icon === "gear" ? -18 : -30) - rnd() * 16;
+    const ang = -Math.PI / 2 + (rnd() - .5) * 2.4, dist = 10 + rnd() * 16;
+    p.live = true; p.t0 = st.t + n * .01; p.dur = .32 + rnd() * .18;
+    p.x0 = at.x + (rnd() - .5) * 6; p.y0 = at.y + (rnd() - .5) * 6;
+    p.tx = p.x0 + Math.cos(ang) * dist; p.ty = p.y0 + Math.sin(ang) * dist;
     p.size = rnd() < .3 ? 3 : 2; p.color = rnd() < .62 ? 0 : rnd() < .6 ? 1 : 2; p.a = 0;
     n++;
   }
 }
-// Un paso de simulación: avanza posición, fase de la marcha, resortes y eventos únicos.
+// Fases del gesto de recogida: alcanzar (hasta el contacto), llevar a la mochila, volver.
+function collectPhases(state, t) {
+  if (state.name !== "COLLECT") return { reach: 0, stow: 0, back: 0 };
+  const m = MS[state.target];
+  return { reach: smooth(state.start, m.contact, t), stow: smooth(m.collected, m.stored, t), back: smooth(m.stored, state.end - .05, t) };
+}
+// Un paso de simulación: avanza posición, fase de la marcha, inclinación y eventos únicos.
 function simulate(st) {
   const t = st.step * DT, tn = (st.step + 1) * DT, mid = t + DT / 2;
   const state = stateAt(mid);
@@ -239,31 +263,24 @@ function simulate(st) {
   st.ground = Math.min(track.length, st.ground + v * DT);
   st.v = v;
   st.phase += v * DT / STRIDE;
-  // inclinación del torso: hacia delante al subir y al recoger, erguido en la cima
+  // inclinación del torso: hacia delante al subir y al alcanzar, hacia atrás al guardar
   const climbing = ["CLIMB", "ACCELERATE"].includes(state.name) && st.ground > track.stops.nodes;
   let leanTarget = v > 1 ? (climbing ? 4.5 : 2.2) * clamp(v / 60) : 0;
-  if (state.name === "COLLECT") leanTarget = 5 * reachAmount(state, mid);
-  if (state.name === "VICTORY") leanTarget = -1.2;
+  if (state.name === "COLLECT") { const c = collectPhases(state, mid); leanTarget = 6 * c.reach * (1 - c.stow) - 2.5 * c.stow * (1 - c.back); }
+  if (state.name === "VICTORY") leanTarget = -1.5;
   st.leanV += ((leanTarget - st.lean) * 90 - st.leanV * 13) * DT;
   st.lean += st.leanV * DT;
-  // rebote del cuerpo y balanceo de la mochila (resorte amortiguado)
-  const s = Math.sin(2 * Math.PI * st.phase + ALPHA);
-  const moving = clamp(v / 45);
-  st.prevBob = st.bob;
-  st.bob = 2.4 * (Math.abs(s) - 7 / 16) * moving;
-  const bobV = (st.bob - st.prevBob) / DT;
-  const bobA = (bobV - st.bobV) / DT; st.bobV = bobV;
-  const accel = (v - (st.lastV ?? 0)) / DT; st.lastV = v;
-  st.packV += (-st.pack * 140 - st.packV * 7 - bobA * .0045 - accel * .012 - st.leanV * .35) * DT;
-  st.pack = clamp(st.pack + st.packV * DT, -3.2, 3.2);
-  // eventos de recogida: se ejecutan una sola vez
+  // eventos: cada uno ocurre una sola vez
   for (const id of ["gear", "nodes"]) {
     const m = MS[id];
-    if (!st.collected[id] && t <= m.contact && tn > m.contact) { st.events.push({ type: "contact", id, t: m.contact }); }
-    if (!st.collected[id] && t <= m.collected && tn > m.collected) {
-      st.collected[id] = true;
-      st.events.push({ type: "collected", id, t: m.collected });
-      spawnParticles(st, id, st.hand || ICON_POS[id]);
+    if (t <= m.contact && tn > m.contact) st.events.push({ type: "contact", id, t: m.contact });
+    if (!st.collected[id] && t <= m.collected && tn > m.collected) { st.collected[id] = true; st.events.push({ type: "collected", id, t: m.collected }); }
+    if (!st.stored[id] && t <= m.stored && tn > m.stored) {
+      st.stored[id] = true;
+      st.indicators = st.stored.nodes ? 2 : 1;
+      st.flash = 1;
+      st.events.push({ type: "stored", id, t: m.stored });
+      burstParticles(st, st.pack0, id);
     }
   }
   if (t <= MS.summit.collected && tn > MS.summit.collected) st.events.push({ type: "summit", id: "summit", t: MS.summit.collected });
@@ -271,123 +288,118 @@ function simulate(st) {
     if (!p.live) continue;
     const k = (tn - p.t0) / p.dur;
     if (k < 0) continue;
-    if (k >= 1) {
-      p.live = false;
-      st.indicators = Math.max(st.indicators, st.collected.nodes ? 2 : 1);
-      st.flash = 1;
-      continue;
-    }
-    const e = smooth(0, 1, k), target = st.pack0 || { x: p.x0, y: p.y0 };
-    const bx = mix(mix(p.x0, p.x0 + p.cx, e), mix(p.x0 + p.cx, target.x, e), e);
-    const by = mix(mix(p.y0, p.y0 + p.cy, e), mix(p.y0 + p.cy, target.y, e), e);
-    p.x = bx; p.y = by; p.a = k < .15 ? k / .15 : 1 - smooth(.7, 1, k) * .8;
+    if (k >= 1) { p.live = false; continue; }
+    const e = 1 - (1 - k) ** 2;
+    p.x = mix(p.x0, p.tx, e); p.y = mix(p.y0, p.ty, e); p.a = k < .12 ? k / .12 : 1 - smooth(.5, 1, k);
   }
   st.flash = Math.max(0, st.flash - DT * 2.2);
   st.step++; st.t = st.step * DT;
 }
-// Grado de extensión del brazo durante una recogida (0 reposo → 1 contacto con el icono).
-function reachAmount(state, t) {
-  if (state.name !== "COLLECT") return 0;
-  const m = MS[state.target];
-  return smooth(state.start, m.contact, t) * (1 - smooth(m.collected, state.end, t));
-}
 
-// ============================================================ explorador
-// Rig construido con las partes recortadas del explorador original.
-const RIG = {
-  anchor: { x: 1118, y: 795 },
-  hip: { x: 1125, y: 712 }, hipBack: { x: 1110, y: 716 }, hipFront: { x: 1138, y: 716 },
-  shoulder: { x: 1146, y: 638 }, neck: { x: 1128, y: 616 }, packPivot: { x: 1090, y: 618 },
-  hand: { x: 1172, y: 699 },
-  indicators: [{ x: 1074, y: 688 }, { x: 1083, y: 688 }],
-};
+// ============================================================ explorador: pose y dibujo
+// Pose del brazo para dejar la herramienta en la mochila (por encima del hombro, hacia atrás).
+const STOW = { arm: 118, elbow: -28 };
 function pose(st, t) {
-  const state = stateAt(t);
-  const p = pointAtGround(st.ground);
-  const s = Math.sin(2 * Math.PI * st.phase + ALPHA), c = Math.cos(2 * Math.PI * st.phase + ALPHA);
-  const moving = clamp(st.v / 45);
-  // En las pausas los pies se acercan a una postura de apoyo estable.
-  const settle = state.name === "VICTORY" ? smooth(state.start, state.start + .5, t) : state.name === "COLLECT" ? .35 * smooth(state.start, state.start + .3, t) : 0;
-  const swing = mix(s, 0, settle);
-  const legB = -7 + 16 * swing, legF = 7 - 16 * swing;
-  const liftB = 5 * Math.max(0, -c) * moving, liftF = 5 * Math.max(0, c) * moving;
-  let arm = 7 * (swing - 7 / 16) * (1 - settle);
-  let head = 0;
-  const reach = reachAmount(state, t);
-  if (reach > 0) {
+  const state = stateAt(t), p = pointAtGround(st.ground);
+  const moving = clamp(st.v / 40);
+  const ph = 2 * Math.PI * st.phase;
+  // marcha alternada: muslo senoidal; la rodilla se flexiona en el vuelo (muslo avanzando)
+  const legAngles = (off) => {
+    const a = ph + off;
+    const swing = Math.max(0, Math.cos(a));
+    return { fwd: GAIT.thigh * Math.sin(a) * moving, flex: (GAIT.stanceKnee + (GAIT.knee - GAIT.stanceKnee) * swing ** 1.3) * moving + 2 * (1 - moving) };
+  };
+  const near = legAngles(0), far = legAngles(Math.PI);
+  // brazos en contrafase con las piernas del mismo lado
+  const gaitArm = GAIT.arm * Math.sin(ph) * moving;
+  const gaitElbow = -(GAIT.elbow + GAIT.elbowSwing * Math.max(0, -Math.sin(ph))) * moving - 6 * (1 - moving);
+  let arm = gaitArm, elbow = gaitElbow;
+  const farHand = GAIT.farHand * Math.sin(ph) * moving;
+  const ps = { x: p.x, y: p.y, scale: p.s, lean: st.lean, near, far, arm, elbow, farHand, state };
+  if (state.name === "COLLECT") {
+    const c = collectPhases(state, t);
+    // ángulo para que el brazo apunte al icono desde el hombro
+    const M0 = explorerMatrices(ps);
+    const sh = M0.body.transformPoint(new DOMPoint(PV.shoulder.x, PV.shoulder.y));
     const target = ICON_POS[state.target];
-    const sh = { x: p.x + p.s * (RIG.shoulder.x - RIG.anchor.x), y: p.y + p.s * (RIG.shoulder.y - RIG.anchor.y) };
-    const rest = Math.atan2(RIG.hand.y - RIG.shoulder.y, RIG.hand.x - RIG.shoulder.x);
+    const rest = Math.atan2(PV.hand.y - PV.shoulder.y, PV.hand.x - PV.shoulder.x);
     const want = Math.atan2(target.y - sh.y, target.x - sh.x);
-    arm = mix(arm, clamp((want - rest) / DEG - 6, -72, 0), reach);
-    head = -6 * reach;
+    const reachArm = clamp((want - rest) / DEG - st.lean, -115, 5);
+    arm = mix(mix(mix(gaitArm, reachArm, c.reach), STOW.arm, c.stow), gaitArm, c.back);
+    elbow = mix(mix(mix(gaitElbow, -4, c.reach), STOW.elbow, c.stow), gaitElbow, c.back);
   }
   if (state.name === "VICTORY") {
-    const k = smooth(state.start + .2, state.start + .9, t);
-    head = mix(head, -7, k); arm = mix(arm, 3, k);
+    // gesto final: puño en alto, contenido
+    const k = smooth(state.start + .25, state.start + .85, t);
+    arm = mix(arm, -32, k); elbow = mix(elbow, -82, k);
   }
-  return { x: p.x, y: p.y, scale: p.s, legB, legF, liftB, liftF, arm, head, lean: st.lean, bob: st.bob, pack: st.pack, state };
+  return { ...ps, arm, elbow };
 }
-function rotateAbout(m, pt, deg) { return m.translate(pt.x, pt.y).rotate(deg).translate(-pt.x, -pt.y); }
 function explorerMatrices(ps) {
-  const world = new DOMMatrix().translate(ps.x, ps.y).scale(ps.scale).translate(-RIG.anchor.x, -RIG.anchor.y);
-  const body = rotateAbout(world.translate(0, ps.bob), RIG.hip, ps.lean);
+  const nearL = legChain("near", ps.near.fwd, ps.near.flex), farL = legChain("far", ps.far.fwd, ps.far.flex);
+  // apoyo: el pie más bajo toca el sendero (de aquí sale el rebote natural de la cadera)
+  const groundY = Math.max(nearL.sole.y, farL.sole.y);
+  const anchorX = PV.screen.x - EX.screenOffset.x * EX.scale;
+  const base = new DOMMatrix().translate(ps.x, ps.y).scale(ps.scale / EX.scale).translate(-anchorX, -groundY);
+  const body = rotAbout(base, PV.hip, ps.lean);
+  const armUpper = rotAbout(body, PV.shoulder, ps.arm);
   return {
-    world, body,
-    backLeg: rotateAbout(world.translate(0, -ps.liftB), RIG.hipBack, ps.legB),
-    frontLeg: rotateAbout(world.translate(0, -ps.liftF), RIG.hipFront, ps.legF),
-    pack: rotateAbout(body, RIG.packPivot, ps.pack),
-    head: rotateAbout(body, RIG.neck, ps.head),
-    arm: rotateAbout(body, RIG.shoulder, ps.arm),
+    base, body, armUpper,
+    armLower: rotAbout(armUpper, PV.elbow, ps.elbow),
+    farThigh: base.multiply(farL.thigh), farShin: base.multiply(farL.shin),
+    nearThigh: base.multiply(nearL.thigh), nearShin: base.multiply(nearL.shin),
+    farHand: body.translate(ps.farHand, -Math.abs(ps.farHand) * .15),
   };
 }
-function drawPart(ctx, m, part) {
-  const P = LAYERS.explorer.parts[part];
+const handPoint = (M) => { const q = M.armLower.transformPoint(new DOMPoint(PV.hand.x, PV.hand.y)); return { x: q.x, y: q.y }; };
+// Indicadores de herramientas: bajo la pantalla de la mochila (coordenadas del torso).
+const indicatorSlot = (i) => ({ x: PV.screen.x - PV.screen.w * .38 + i * 18, y: PV.screen.y + PV.screen.h * .5 + 12 });
+function drawPart(ctx, m, name) {
+  const P = EX.parts[name];
   ctx.setTransform(m);
   ctx.drawImage(img[P.file], P.x, P.y);
 }
 function drawExplorer(ctx, st, ps, M) {
   ctx.save();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-  drawPart(ctx, M.backLeg, "backLeg");
-  drawPart(ctx, M.frontLeg, "frontLeg");
+  drawPart(ctx, M.farShin, "farShin"); drawPart(ctx, M.farThigh, "farThigh");
+  drawPart(ctx, M.nearShin, "nearShin"); drawPart(ctx, M.nearThigh, "nearThigh");
+  drawPart(ctx, M.farHand, "farHand");
   drawPart(ctx, M.body, "torso");
-  drawPart(ctx, M.pack, "backpack");
-  // luz de la pantalla de la mochila sobre el entorno: viaja con el explorador
-  const G = LAYERS.explorer.glow;
-  ctx.setTransform(M.pack);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.drawImage(img[G.file], G.x, G.y);
+  // luz de la pantalla de la mochila sobre el entorno
+  const S = PV.screen;
+  const glow = ctx.createRadialGradient(S.x, S.y, S.w * .3, S.x, S.y, S.w * 1.15);
+  glow.addColorStop(0, "rgba(70,240,230,.16)"); glow.addColorStop(1, "rgba(70,240,230,0)");
+  ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = glow;
+  ctx.fillRect(S.x - S.w * 1.2, S.y - S.w * 1.2, S.w * 2.4, S.w * 2.4);
   ctx.globalCompositeOperation = "source-over";
-  // indicadores de herramientas obtenidas sobre la mochila
-  ctx.setTransform(M.pack);
   for (let i = 0; i < st.indicators; i++) {
-    const q = RIG.indicators[i];
-    const glow = .35 + .65 * st.flash;
-    ctx.fillStyle = `rgba(97,247,231,${.25 * glow})`; ctx.fillRect(q.x - 2, q.y - 2, 8, 8);
-    ctx.fillStyle = "#3fe9de"; ctx.fillRect(q.x, q.y, 4, 4);
-    ctx.fillStyle = "#e8fffb"; ctx.fillRect(q.x + 1, q.y + 1, 2, 2);
+    const q = indicatorSlot(i), k = .35 + .65 * st.flash;
+    ctx.fillStyle = `rgba(97,247,231,${.25 * k})`; ctx.fillRect(q.x - 4, q.y - 4, 16, 16);
+    ctx.fillStyle = "#3fe9de"; ctx.fillRect(q.x, q.y, 8, 8);
+    ctx.fillStyle = "#e8fffb"; ctx.fillRect(q.x + 2, q.y + 2, 4, 4);
   }
-  drawPart(ctx, M.head, "head");
-  drawPart(ctx, M.arm, "arm");
+  drawPart(ctx, M.armUpper, "armUpper"); drawPart(ctx, M.armLower, "armLower");
   ctx.restore();
 }
 
 // ============================================================ iconos, ruta y efectos
-function drawIcon(ctx, id, st, t, handPt) {
+// Icono: en su sitio hasta el contacto; se encoge hacia la mano, viaja en ella hasta la mochila
+// y desaparece al guardarse. `held` dibuja solo la parte que va en la mano (delante del explorador).
+function drawIcon(ctx, id, st, t, handPt, held) {
   const L = LAYERS[id], m = MS[id];
-  if (t >= m.collected) return;
+  if (t >= m.stored || held !== t >= m.contact) return;
   const cx = L.x + L.w / 2, cy = L.y + L.h / 2;
-  const k = smooth(m.contact + .06, m.collected, t);   // absorción hacia la mano
-  const scale = 1 - .86 * k;
-  const tx = mix(cx, handPt.x, k * k), ty = mix(cy, handPt.y, k * k);
+  const k = smooth(m.contact, m.collected, t);   // absorción hacia la mano
+  const scale = 1 - .8 * k;
+  const tx = mix(cx, handPt.x, k), ty = mix(cy, handPt.y, k);
   ctx.save();
   ctx.imageSmoothingEnabled = true;
-  ctx.globalAlpha = 1 - smooth(.55, 1, k);
+  ctx.globalAlpha = 1 - .35 * smooth(m.stored - .08, m.stored, t);
   ctx.translate(tx, ty); ctx.scale(scale, scale);
   ctx.drawImage(img[L.file], -L.w / 2, -L.h / 2);
   // pulsación turquesa en el contacto
-  const pulse = Math.max(0, 1 - Math.abs(t - m.contact) / .14) * (1 - k);
+  const pulse = Math.max(0, 1 - Math.abs(t - m.contact) / .14);
   if (pulse > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .75 * pulse; ctx.drawImage(img[L.file], -L.w / 2, -L.h / 2); }
   ctx.restore();
 }
@@ -451,16 +463,29 @@ function drawClouds(ctx, t) {
   }
 }
 function drawStars(ctx, t) {
-  const S = LAYERS.starSprite;
-  ctx.save();
+  const S = LAYERS.sky, sc = layers.starCanvas, s = sc.getContext("2d");
+  s.globalCompositeOperation = "source-over"; s.globalAlpha = 1;
+  s.clearRect(0, 0, S.w, S.h);
   for (const st of layers.stars) {
-    if (!st.twinkle) continue;
-    let m = st.amp * Math.sin(2 * Math.PI * st.f * t + st.ph) - st.amp * Math.sin(st.ph);
-    if (st.big) m += .45 * (Math.exp(-((((t + st.ph) % 4.3 - 2) / .12) ** 2)) - Math.exp(-(((st.ph % 4.3 - 2) / .12) ** 2)));
-    if (Math.abs(m) < .01) continue;
-    if (m > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(1, m); ctx.drawImage(img[S.file], st.x, st.y, st.w, st.h, st.x, st.y, st.w, st.h); }
-    else { ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = Math.min(1, -m); ctx.drawImage(layers.starsDim, st.x, st.y, st.w, st.h, st.x, st.y, st.w, st.h); }
+    // centelleo suave: la intensidad oscila alrededor de su brillo propio
+    const k = clamp(st.b * (1 + st.amp * Math.sin(2 * Math.PI * st.f * t + st.ph)), 0, 1);
+    const [r, g, b] = st.tint;
+    if (st.halo) {
+      const grad = s.createRadialGradient(st.x, st.y, 0, st.x, st.y, st.halo);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${.35 * k})`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      s.fillStyle = grad; s.beginPath(); s.arc(st.x, st.y, st.halo, 0, Math.PI * 2); s.fill();
+    }
+    s.fillStyle = `rgba(${r},${g},${b},${k})`;
+    s.beginPath(); s.arc(st.x, st.y, st.r, 0, Math.PI * 2); s.fill();
   }
+  // solo donde hay cielo despejado
+  s.globalCompositeOperation = "destination-in";
+  s.drawImage(img[S.file], 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.drawImage(sc, S.x, S.y);
   ctx.restore();
 }
 function drawLights(ctx, t) {
@@ -490,18 +515,17 @@ function simulateAll() {
   for (let i = 0; i < Math.round(DURATION * SIM_HZ); i++) {
     const ps = pose(st, st.t);
     const M = explorerMatrices(ps);
-    st.hand = M.arm.transformPoint(new DOMPoint(RIG.hand.x, RIG.hand.y));
-    st.hand = { x: st.hand.x, y: st.hand.y };
     st.pack0 = packTarget(st, M);
     simulate(st);
     snap();
   }
   return out;
 }
+// Punto de la mochila donde se guarda la herramienta (el indicador que está por encenderse).
 function packTarget(st, M) {
-  if (!M) return { x: RIG.indicators[0].x, y: RIG.indicators[0].y };
-  const slot = RIG.indicators[st.collected.nodes ? 1 : 0];
-  const q = M.pack.transformPoint(new DOMPoint(slot.x + 2, slot.y + 2));
+  if (!M) return { x: PATH[0].x, y: PATH[0].y - 120 };
+  const slot = indicatorSlot(st.stored.gear ? 1 : 0);
+  const q = M.body.transformPoint(new DOMPoint(slot.x + 4, slot.y + 4));
   return { x: q.x, y: q.y };
 }
 function renderFrame(frame, target) {
@@ -509,21 +533,24 @@ function renderFrame(frame, target) {
   const st = STATES_CACHE[Math.min(STATES_CACHE.length - 1, Math.round(t * SIM_HZ))];
   const ps = pose(st, t);
   const M = explorerMatrices(ps);
-  const hp = M.arm.transformPoint(new DOMPoint(RIG.hand.x, RIG.hand.y));
+  const hp = handPoint(M);
   const c = wctx;
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
   c.imageSmoothingEnabled = false;
   c.drawImage(img[LAYERS.plateFile], 0, 0);
-  drawClouds(c, t);
   drawStars(c, t);
+  drawClouds(c, t);
   drawLights(c, t);
   drawRoute(c, t, st);
   drawSummit(c, t);
-  // iconos detrás del explorador cuando él está más cerca de la cámara
-  drawIcon(c, "gear", st, t, hp);
-  drawIcon(c, "nodes", st, t, hp);
+  // iconos en su sitio: detrás del explorador, que está más cerca de la cámara
+  drawIcon(c, "gear", st, t, hp, false);
+  drawIcon(c, "nodes", st, t, hp, false);
   drawExplorer(c, st, ps, M);
+  // herramienta en la mano, delante del explorador, hasta guardarla
+  drawIcon(c, "gear", st, t, hp, true);
+  drawIcon(c, "nodes", st, t, hp, true);
   drawParticles(c, st);
   const tc = target.getContext("2d");
   tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = "high";
