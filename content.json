@@ -11,6 +11,7 @@
   },
   "interfaz": {
     "scroll": "Scroll para avanzar",
+    "playhead": "Scroll = playhead",
     "recorridoCompleto": "Recorrido completo",
     "inicio": "Inicio del recorrido",
     "etapas": "Etapas del recorrido",
@@ -19,6 +20,7 @@
   "seccions": [
     {
       "id": "hero",
+      "stageLabel": "Home",
       "titlePrefix": "",
       "title": "herramientas digitales",
       "subtitle": "PARA DAR EL PRÓXIMO PASO",
@@ -28,6 +30,7 @@
     {
       "id": "what-i-do",
       "navLabel": "Servicios",
+      "stageLabel": "Servicios",
       "title": "¿Qué hago?",
       "descripcion": "Cada proyecto empieza por una necesidad.",
       "list": [
@@ -51,6 +54,7 @@
     {
       "id": "starting-point",
       "navLabel": "Necesidad",
+      "stageLabel": "Necesidad",
       "title": "¿En qué punto estás?",
       "descripcion": "Una idea nueva, procesos que llevan demasiado tiempo o algo que dejó de funcionar.",
       "list": [
@@ -71,6 +75,7 @@
     {
       "id": "project",
       "navLabel": "Tu proyecto",
+      "stageLabel": "Proyecto",
       "title": "Contame tu proyecto",
       "descripcion": "Unos datos para dar el próximo paso.",
       "form": {

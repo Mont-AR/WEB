@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MONT.AR — Recorrido del explorador</title>
+<style>
+  :root{color-scheme:dark;--bg:#070b39;--panel:#0b1650;--cyan:#61f7e7;--cream:#fff6d9;--muted:#b9b3d9}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--cream);font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+  main{max-width:1640px;margin:0 auto;padding:16px}
+  canvas#view{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#120d50}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+  button{font:inherit;color:var(--bg);background:var(--cyan);border:0;padding:8px 14px;cursor:pointer}
+  button.secondary{background:var(--panel);color:var(--cream);outline:1px solid #2c3a8a}
+  input[type=range]{flex:1;min-width:220px;accent-color:var(--cyan)}
+  .readout{min-width:24ch;color:var(--muted)}
+  #status{color:var(--cyan)}
+</style>
+</head>
+<body>
+<main>
+  <canvas id="view" width="1600" height="900" aria-label="Animación del explorador de MONT.AR"></canvas>
+  <div class="bar">
+    <button id="play" type="button">Reproducir</button>
+    <button id="step-back" class="secondary" type="button" aria-label="Fotograma anterior">‹</button>
+    <button id="step-fwd" class="secondary" type="button" aria-label="Fotograma siguiente">›</button>
+    <input id="scrub" type="range" min="0" max="720" value="0" aria-label="Posición en la línea de tiempo">
+    <span class="readout" id="readout">0000 / 0720 · START</span>
+  </div>
+  <div class="bar">
+    <button id="export" class="secondary" type="button">Exportar MP4 (1600×900, 60 fps)</button>
+    <button id="sheet" class="secondary" type="button">Hoja de contactos</button>
+    <span id="status"></span>
+  </div>
+</main>
+<script>
+"use strict";
+// Recursos incrustados por tools/journey/build-html.mjs (imágenes PNG sin pérdida + metadatos).
+const ASSETS = /*__ASSETS__*/;
+const TIMELINE = ASSETS.timeline;
+const LAYERS = ASSETS.layers;
+const FPS = TIMELINE.fps, SIM_HZ = 60, DT = 1 / SIM_HZ;
+const DURATION = TIMELINE.duration, FRAMES = Math.round(DURATION * FPS);
+const OUT_W = TIMELINE.width, OUT_H = TIMELINE.height;
+const SRC_W = LAYERS.width, SRC_H = LAYERS.height;
+
+// ============================================================ utilidades
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const mix = (a, b, k) => a + (b - a) * k;
+const smooth = (a, b, v) => { const k = clamp((v - a) / (b - a)); return k * k * (3 - 2 * k); };
+const DEG = Math.PI / 180;
+function mulberry32(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+
+// ============================================================ carga de la referencia y capas
+const img = {};
+async function loadImages() {
+  await Promise.all(Object.entries(ASSETS.images).map(([name, url]) => new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => { img[name] = im; resolve(); };
+    im.onerror = () => reject(new Error("No se pudo cargar " + name));
+    im.src = url;
+  })));
+}
+
+// ============================================================ capas derivadas (máscaras por grupo)
+const layers = {};
+function prepareLayers() {
+  // Luces del pueblo: un lienzo por grupo para variar su intensidad de forma independiente.
+  const L = LAYERS.lights;
+  const lc = makeCanvas(L.w, L.h).getContext("2d", { willReadFrequently: true });
+  lc.drawImage(img[L.file], 0, 0);
+  const lights = lc.getImageData(0, 0, L.w, L.h);
+  lc.clearRect(0, 0, L.w, L.h); lc.drawImage(img[L.groupsFile], 0, 0);
+  const groups = lc.getImageData(0, 0, L.w, L.h);
+  layers.lightGroups = [];
+  for (let g = 1; g <= 6; g++) {
+    const c = makeCanvas(L.w, L.h), x = c.getContext("2d");
+    const d = x.createImageData(L.w, L.h);
+    const dim = makeCanvas(L.w, L.h), dx = dim.getContext("2d");
+    const dd = dx.createImageData(L.w, L.h);
+    for (let i = 0; i < d.data.length; i += 4) {
+      if (Math.round(groups.data[i] / 40) !== g || !groups.data[i + 3]) continue;
+      d.data.set(lights.data.subarray(i, i + 4), i);
+      dd.data[i] = 22; dd.data[i + 1] = 14; dd.data[i + 2] = 58; dd.data[i + 3] = lights.data[i + 3];
+    }
+    x.putImageData(d, 0, 0); dx.putImageData(dd, 0, 0);
+    layers.lightGroups.push({ bright: c, dim });
+  }
+  // Estrellas: versión "apagada" con el color del cielo circundante.
+  const S = LAYERS.starSprite;
+  const sc = makeCanvas(S.w, S.h).getContext("2d", { willReadFrequently: true });
+  sc.drawImage(img[S.file], 0, 0);
+  const sd = sc.getImageData(0, 0, S.w, S.h);
+  for (const st of LAYERS.stars) for (let y = st.y; y < st.y + st.h; y++) for (let x = st.x; x < st.x + st.w; x++) {
+    const i = (y * S.w + x) * 4; if (!sd.data[i + 3]) continue;
+    sd.data[i] = st.bg[0]; sd.data[i + 1] = st.bg[1]; sd.data[i + 2] = st.bg[2];
+  }
+  layers.starsDim = makeCanvas(S.w, S.h); layers.starsDim.getContext("2d").putImageData(sd, 0, 0);
+  const rnd = mulberry32(11);
+  layers.stars = LAYERS.stars.map((st) => ({ ...st, twinkle: st.big || rnd() < .55, f: .35 + rnd() * .55, ph: rnd() * Math.PI * 2, amp: st.big ? .5 : .28 + rnd() * .2 }));
+  layers.lightOsc = Array.from({ length: 6 }, () => ({ f1: .18 + rnd() * .35, f2: .6 + rnd() * .9, ph: rnd() * Math.PI * 2, amp: .3 + rnd() * .25 }));
+}
+
+// ============================================================ trayectoria sobre el sendero real
+// Puntos de apoyo de los pies (coordenadas de la ilustración) y escala por perspectiva.
+const PATH = [
+  { x: 1118, y: 795, s: 1.00 },
+  { x: 1165, y: 778, s: .95 },
+  { x: 1215, y: 750, s: .87 },
+  { x: 1268, y: 716, s: .76, stop: "gear" },
+  { x: 1310, y: 694, s: .71 },
+  { x: 1350, y: 668, s: .66 },
+  { x: 1385, y: 642, s: .62 },
+  { x: 1418, y: 620, s: .59, stop: "nodes" },
+  { x: 1452, y: 598, s: .56 },
+  { x: 1485, y: 578, s: .535 },
+  { x: 1507, y: 556, s: .515 },
+  { x: 1520, y: 530, s: .495 },
+  { x: 1530, y: 505, s: .475 },
+  { x: 1527, y: 485, s: .46 },
+  { x: 1520, y: 468, s: .45 },
+  { x: 1512, y: 453, s: .44, stop: "summit" },
+];
+// Tramo anterior al explorador, solo para ordenar los puntos de luz de la ruta.
+const PRE_PATH = [{ x: 905, y: 905 }, { x: 990, y: 860 }, { x: 1060, y: 822 }];
+function catmull(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  const f = (a, b, c, d) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+  return { x: f(p0.x, p1.x, p2.x, p3.x), y: f(p0.y, p1.y, p2.y, p3.y), s: f(p0.s, p1.s, p2.s, p3.s) };
+}
+const track = (() => {
+  // Muestreo denso: distancia en pantalla y distancia "de suelo" (pantalla / escala).
+  const pts = [];
+  for (let i = 0; i < PATH.length - 1; i++) {
+    const p0 = PATH[Math.max(0, i - 1)], p1 = PATH[i], p2 = PATH[i + 1], p3 = PATH[Math.min(PATH.length - 1, i + 2)];
+    for (let k = 0; k < 40; k++) pts.push({ ...catmull(p0, p1, p2, p3, k / 40), seg: i });
+  }
+  pts.push({ ...PATH[PATH.length - 1], seg: PATH.length - 1 });
+  let screen = 0, ground = 0;
+  pts[0].screen = 0; pts[0].ground = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    screen += d; ground += d / ((pts[i].s + pts[i - 1].s) / 2);
+    pts[i].screen = screen; pts[i].ground = ground;
+  }
+  const stops = {};
+  PATH.forEach((p, i) => { if (p.stop) stops[p.stop] = pts.find(q => q.seg === i).ground; });
+  stops.summit = ground;
+  return { pts, stops, length: ground };
+})();
+function pointAtGround(g) {
+  const pts = track.pts;
+  if (g <= 0) return { ...pts[0] };
+  if (g >= track.length) return { ...pts[pts.length - 1] };
+  let lo = 0, hi = pts.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].ground < g) lo = m; else hi = m; }
+  const a = pts[lo], b = pts[hi], k = (g - a.ground) / (b.ground - a.ground);
+  return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), s: mix(a.s, b.s, k), screen: mix(a.screen, b.screen, k) };
+}
+
+// ============================================================ máquina de estados y velocidades
+// Cada tramo de marcha recorre exactamente la distancia hasta el siguiente hito.
+const STATES = TIMELINE.states;
+const MS = Object.fromEntries(TIMELINE.milestones.map(m => [m.id, m]));
+function speedShape(state, t) {
+  // fracción de la velocidad de crucero del tramo según el estado
+  const k = (t - state.start) / (state.end - state.start);
+  switch (state.name) {
+    case "WALK": return state === STATES[1] ? smooth(0, .3, k) : 1;
+    case "APPROACH": case "ARRIVE": return 1 - smooth(0, 1, k);
+    case "ACCELERATE": return smooth(0, 1, k);
+    case "CLIMB": return 1;
+    default: return 0;
+  }
+}
+const legs = (() => {
+  // tramos: [inicio..primer hito], [hito 1..hito 2], [hito 2..cima]
+  const groups = [[], [], []];
+  let g = 0;
+  for (const st of STATES) {
+    if (st.name === "COLLECT") { g++; continue; }
+    if (["WALK", "APPROACH", "ACCELERATE", "CLIMB", "ARRIVE"].includes(st.name)) groups[g].push(st);
+  }
+  const ends = [track.stops.gear, track.stops.nodes, track.stops.summit];
+  let from = 0;
+  return groups.map((sts, i) => {
+    let area = 0;
+    for (const st of sts) for (let t = st.start; t < st.end - 1e-9; t += DT) area += speedShape(st, t + DT / 2) * DT;
+    const v = (ends[i] - from) / area;
+    from = ends[i];
+    return { states: sts, v };
+  });
+})();
+function stateAt(t) { for (const st of STATES) if (t < st.end) return st; return STATES[STATES.length - 1]; }
+function speedAt(t) {
+  const st = stateAt(t);
+  for (const leg of legs) if (leg.states.includes(st)) return leg.v * speedShape(st, t);
+  return 0;
+}
+
+// ============================================================ simulación (paso fijo de 60 Hz)
+const STRIDE = 92;                 // longitud de un ciclo completo (dos pasos) en unidades de suelo
+const ALPHA = Math.asin(7 / 16);   // fase inicial: reproduce la postura original
+const PARTICLES = 48;
+const ICON_POS = {
+  gear: { x: LAYERS.gear.x + LAYERS.gear.w / 2, y: LAYERS.gear.y + LAYERS.gear.h * .42 },
+  nodes: { x: LAYERS.nodes.x + LAYERS.nodes.w / 2, y: LAYERS.nodes.y + LAYERS.nodes.h * .45 },
+};
+function initialState() {
+  return {
+    step: 0, t: 0, ground: 0, v: 0, phase: 0,
+    lean: 0, leanV: 0, pack: 0, packV: 0, bob: 0, prevBob: 0, bobV: 0,
+    collected: { gear: false, nodes: false }, indicators: 0, flash: 0,
+    events: [],
+    particles: Array.from({ length: PARTICLES }, () => ({ live: false, t0: 0, dur: 0, x0: 0, y0: 0, cx: 0, cy: 0, target: "", size: 2, color: 0, x: 0, y: 0, a: 0 })),
+  };
+}
+const rnd = mulberry32(20261020);
+function spawnParticles(st, icon, from) {
+  const count = icon === "gear" ? 14 : 16;
+  let n = 0;
+  for (const p of st.particles) {
+    if (p.live || n >= count) continue;
+    p.live = true; p.t0 = st.t + n * .012; p.dur = .3 + rnd() * .14;
+    p.x0 = from.x + (rnd() - .5) * 14; p.y0 = from.y + (rnd() - .5) * 12;
+    // la segunda recogida describe un arco más alto
+    p.cx = (rnd() - .5) * 26; p.cy = (icon === "gear" ? -18 : -30) - rnd() * 16;
+    p.size = rnd() < .3 ? 3 : 2; p.color = rnd() < .62 ? 0 : rnd() < .6 ? 1 : 2; p.a = 0;
+    n++;
+  }
+}
+// Un paso de simulación: avanza posición, fase de la marcha, resortes y eventos únicos.
+function simulate(st) {
+  const t = st.step * DT, tn = (st.step + 1) * DT, mid = t + DT / 2;
+  const state = stateAt(mid);
+  const v = speedAt(mid);
+  st.ground = Math.min(track.length, st.ground + v * DT);
+  st.v = v;
+  st.phase += v * DT / STRIDE;
+  // inclinación del torso: hacia delante al subir y al recoger, erguido en la cima
+  const climbing = ["CLIMB", "ACCELERATE"].includes(state.name) && st.ground > track.stops.nodes;
+  let leanTarget = v > 1 ? (climbing ? 4.5 : 2.2) * clamp(v / 60) : 0;
+  if (state.name === "COLLECT") leanTarget = 5 * reachAmount(state, mid);
+  if (state.name === "VICTORY") leanTarget = -1.2;
+  st.leanV += ((leanTarget - st.lean) * 90 - st.leanV * 13) * DT;
+  st.lean += st.leanV * DT;
+  // rebote del cuerpo y balanceo de la mochila (resorte amortiguado)
+  const s = Math.sin(2 * Math.PI * st.phase + ALPHA);
+  const moving = clamp(v / 45);
+  st.prevBob = st.bob;
+  st.bob = 2.4 * (Math.abs(s) - 7 / 16) * moving;
+  const bobV = (st.bob - st.prevBob) / DT;
+  const bobA = (bobV - st.bobV) / DT; st.bobV = bobV;
+  const accel = (v - (st.lastV ?? 0)) / DT; st.lastV = v;
+  st.packV += (-st.pack * 140 - st.packV * 7 - bobA * .0045 - accel * .012 - st.leanV * .35) * DT;
+  st.pack = clamp(st.pack + st.packV * DT, -3.2, 3.2);
+  // eventos de recogida: se ejecutan una sola vez
+  for (const id of ["gear", "nodes"]) {
+    const m = MS[id];
+    if (!st.collected[id] && t <= m.contact && tn > m.contact) { st.events.push({ type: "contact", id, t: m.contact }); }
+    if (!st.collected[id] && t <= m.collected && tn > m.collected) {
+      st.collected[id] = true;
+      st.events.push({ type: "collected", id, t: m.collected });
+      spawnParticles(st, id, st.hand || ICON_POS[id]);
+    }
+  }
+  if (t <= MS.summit.collected && tn > MS.summit.collected) st.events.push({ type: "summit", id: "summit", t: MS.summit.collected });
+  for (const p of st.particles) {
+    if (!p.live) continue;
+    const k = (tn - p.t0) / p.dur;
+    if (k < 0) continue;
+    if (k >= 1) {
+      p.live = false;
+      st.indicators = Math.max(st.indicators, st.collected.nodes ? 2 : 1);
+      st.flash = 1;
+      continue;
+    }
+    const e = smooth(0, 1, k), target = st.pack0 || { x: p.x0, y: p.y0 };
+    const bx = mix(mix(p.x0, p.x0 + p.cx, e), mix(p.x0 + p.cx, target.x, e), e);
+    const by = mix(mix(p.y0, p.y0 + p.cy, e), mix(p.y0 + p.cy, target.y, e), e);
+    p.x = bx; p.y = by; p.a = k < .15 ? k / .15 : 1 - smooth(.7, 1, k) * .8;
+  }
+  st.flash = Math.max(0, st.flash - DT * 2.2);
+  st.step++; st.t = st.step * DT;
+}
+// Grado de extensión del brazo durante una recogida (0 reposo → 1 contacto con el icono).
+function reachAmount(state, t) {
+  if (state.name !== "COLLECT") return 0;
+  const m = MS[state.target];
+  return smooth(state.start, m.contact, t) * (1 - smooth(m.collected, state.end, t));
+}
+
+// ============================================================ explorador
+// Rig construido con las partes recortadas del explorador original.
+const RIG = {
+  anchor: { x: 1118, y: 795 },
+  hip: { x: 1125, y: 712 }, hipBack: { x: 1110, y: 716 }, hipFront: { x: 1138, y: 716 },
+  shoulder: { x: 1146, y: 638 }, neck: { x: 1128, y: 616 }, packPivot: { x: 1090, y: 618 },
+  hand: { x: 1172, y: 699 },
+  indicators: [{ x: 1074, y: 688 }, { x: 1083, y: 688 }],
+};
+function pose(st, t) {
+  const state = stateAt(t);
+  const p = pointAtGround(st.ground);
+  const s = Math.sin(2 * Math.PI * st.phase + ALPHA), c = Math.cos(2 * Math.PI * st.phase + ALPHA);
+  const moving = clamp(st.v / 45);
+  // En las pausas los pies se acercan a una postura de apoyo estable.
+  const settle = state.name === "VICTORY" ? smooth(state.start, state.start + .5, t) : state.name === "COLLECT" ? .35 * smooth(state.start, state.start + .3, t) : 0;
+  const swing = mix(s, 0, settle);
+  const legB = -7 + 16 * swing, legF = 7 - 16 * swing;
+  const liftB = 5 * Math.max(0, -c) * moving, liftF = 5 * Math.max(0, c) * moving;
+  let arm = 7 * (swing - 7 / 16) * (1 - settle);
+  let head = 0;
+  const reach = reachAmount(state, t);
+  if (reach > 0) {
+    const target = ICON_POS[state.target];
+    const sh = { x: p.x + p.s * (RIG.shoulder.x - RIG.anchor.x), y: p.y + p.s * (RIG.shoulder.y - RIG.anchor.y) };
+    const rest = Math.atan2(RIG.hand.y - RIG.shoulder.y, RIG.hand.x - RIG.shoulder.x);
+    const want = Math.atan2(target.y - sh.y, target.x - sh.x);
+    arm = mix(arm, clamp((want - rest) / DEG - 6, -72, 0), reach);
+    head = -6 * reach;
+  }
+  if (state.name === "VICTORY") {
+    const k = smooth(state.start + .2, state.start + .9, t);
+    head = mix(head, -7, k); arm = mix(arm, 3, k);
+  }
+  return { x: p.x, y: p.y, scale: p.s, legB, legF, liftB, liftF, arm, head, lean: st.lean, bob: st.bob, pack: st.pack, state };
+}
+function rotateAbout(m, pt, deg) { return m.translate(pt.x, pt.y).rotate(deg).translate(-pt.x, -pt.y); }
+function explorerMatrices(ps) {
+  const world = new DOMMatrix().translate(ps.x, ps.y).scale(ps.scale).translate(-RIG.anchor.x, -RIG.anchor.y);
+  const body = rotateAbout(world.translate(0, ps.bob), RIG.hip, ps.lean);
+  return {
+    world, body,
+    backLeg: rotateAbout(world.translate(0, -ps.liftB), RIG.hipBack, ps.legB),
+    frontLeg: rotateAbout(world.translate(0, -ps.liftF), RIG.hipFront, ps.legF),
+    pack: rotateAbout(body, RIG.packPivot, ps.pack),
+    head: rotateAbout(body, RIG.neck, ps.head),
+    arm: rotateAbout(body, RIG.shoulder, ps.arm),
+  };
+}
+function drawPart(ctx, m, part) {
+  const P = LAYERS.explorer.parts[part];
+  ctx.setTransform(m);
+  ctx.drawImage(img[P.file], P.x, P.y);
+}
+function drawExplorer(ctx, st, ps, M) {
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  drawPart(ctx, M.backLeg, "backLeg");
+  drawPart(ctx, M.frontLeg, "frontLeg");
+  drawPart(ctx, M.body, "torso");
+  drawPart(ctx, M.pack, "backpack");
+  // indicadores de herramientas obtenidas sobre la mochila
+  ctx.setTransform(M.pack);
+  for (let i = 0; i < st.indicators; i++) {
+    const q = RIG.indicators[i];
+    const glow = .35 + .65 * st.flash;
+    ctx.fillStyle = `rgba(97,247,231,${.25 * glow})`; ctx.fillRect(q.x - 2, q.y - 2, 8, 8);
+    ctx.fillStyle = "#3fe9de"; ctx.fillRect(q.x, q.y, 4, 4);
+    ctx.fillStyle = "#e8fffb"; ctx.fillRect(q.x + 1, q.y + 1, 2, 2);
+  }
+  drawPart(ctx, M.head, "head");
+  drawPart(ctx, M.arm, "arm");
+  ctx.restore();
+}
+
+// ============================================================ iconos, ruta y efectos
+function drawIcon(ctx, id, st, t, handPt) {
+  const L = LAYERS[id], m = MS[id];
+  if (t >= m.collected) return;
+  const cx = L.x + L.w / 2, cy = L.y + L.h / 2;
+  const k = smooth(m.contact + .06, m.collected, t);   // absorción hacia la mano
+  const scale = 1 - .86 * k;
+  const tx = mix(cx, handPt.x, k * k), ty = mix(cy, handPt.y, k * k);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalAlpha = 1 - smooth(.55, 1, k);
+  ctx.translate(tx, ty); ctx.scale(scale, scale);
+  ctx.drawImage(img[L.file], -L.w / 2, -L.h / 2);
+  // pulsación turquesa en el contacto
+  const pulse = Math.max(0, 1 - Math.abs(t - m.contact) / .14) * (1 - k);
+  if (pulse > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .75 * pulse; ctx.drawImage(img[L.file], -L.w / 2, -L.h / 2); }
+  ctx.restore();
+}
+const routeDots = (() => {
+  // orden de los puntos de luz a lo largo del recorrido (en px de pantalla)
+  const line = [...PRE_PATH, ...track.pts.filter((_, i) => i % 4 === 0)];
+  let acc = 0; const seg = [];
+  for (let i = 0; i < line.length; i++) { if (i) acc += Math.hypot(line[i].x - line[i - 1].x, line[i].y - line[i - 1].y); seg.push(acc); }
+  const offset = seg[PRE_PATH.length];
+  return LAYERS.route.dots.map(d => {
+    let best = Infinity, pos = 0;
+    for (let i = 0; i < line.length; i++) { const dd = (line[i].x - d.cx) ** 2 + (line[i].y - d.cy) ** 2; if (dd < best) { best = dd; pos = seg[i] - offset; } }
+    return { ...d, pos };
+  });
+})();
+const ROUTE_END = Math.max(...routeDots.map(d => d.pos));
+function drawRoute(ctx, t, ps) {
+  const here = pointAtGround(ps.ground).screen;
+  const intro = smooth(0, .6, t);
+  const wave = mix(-120, ROUTE_END + 80, smooth(MS.summit.collected + .05, MS.summit.collected + .85, t));
+  const waveOn = t > MS.summit.collected ? 1 : 0;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const d of routeDots) {
+    const ahead = d.pos - here;
+    let b = intro * (.5 * Math.exp(-(((ahead - 70) / 75) ** 2)) + .1 * (.5 + .5 * Math.sin(t * 3.1 - d.pos / 45)));
+    b += waveOn * .9 * Math.exp(-(((d.pos - wave) / 45) ** 2));
+    if (b <= .01) continue;
+    ctx.globalAlpha = Math.min(1, b);
+    ctx.drawImage(img[LAYERS.route.sprite.file], d.x, d.y, d.w, d.h, d.x, d.y, d.w, d.h);
+  }
+  ctx.restore();
+}
+function drawSummit(ctx, t) {
+  const S = LAYERS.summit, m = MS.summit;
+  const k = t - m.collected;
+  if (k <= 0) return;
+  // secuencia luminosa breve: dos destellos y un brillo residual estable
+  const flash = Math.exp(-(((k - .12) / .09) ** 2)) + .7 * Math.exp(-(((k - .42) / .1) ** 2)) + .32 * smooth(.3, .9, k);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = Math.min(1, flash * .8);
+  ctx.drawImage(img[S.file], S.x, S.y);
+  ctx.restore();
+}
+function drawParticles(ctx, st) {
+  const colors = ["#61f7e7", "#e8fffb", "#b48cff"];
+  ctx.save();
+  for (const p of st.particles) {
+    if (!p.live || p.a <= 0) continue;
+    ctx.globalAlpha = clamp(p.a);
+    ctx.fillStyle = colors[p.color];
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+  }
+  ctx.restore();
+}
+function drawClouds(ctx, t) {
+  for (const c of LAYERS.clouds) {
+    const dx = Math.round(c.drift * t / DURATION);   // desplazamiento por píxeles enteros, sin desenfoque
+    ctx.drawImage(img[c.file], c.x + dx, c.y);
+  }
+}
+function drawStars(ctx, t) {
+  const S = LAYERS.starSprite;
+  ctx.save();
+  for (const st of layers.stars) {
+    if (!st.twinkle) continue;
+    let m = st.amp * Math.sin(2 * Math.PI * st.f * t + st.ph) - st.amp * Math.sin(st.ph);
+    if (st.big) m += .45 * (Math.exp(-((((t + st.ph) % 4.3 - 2) / .12) ** 2)) - Math.exp(-(((st.ph % 4.3 - 2) / .12) ** 2)));
+    if (Math.abs(m) < .01) continue;
+    if (m > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(1, m); ctx.drawImage(img[S.file], st.x, st.y, st.w, st.h, st.x, st.y, st.w, st.h); }
+    else { ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = Math.min(1, -m); ctx.drawImage(layers.starsDim, st.x, st.y, st.w, st.h, st.x, st.y, st.w, st.h); }
+  }
+  ctx.restore();
+}
+function drawLights(ctx, t) {
+  const L = LAYERS.lights;
+  ctx.save();
+  layers.lightGroups.forEach((g, i) => {
+    const o = layers.lightOsc[i];
+    const m = o.amp * Math.sin(2 * Math.PI * o.f1 * t) * (.6 + .4 * Math.sin(2 * Math.PI * o.f2 * t + o.ph));
+    if (Math.abs(m) < .01) return;
+    if (m > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(1, m * .9); ctx.drawImage(g.bright, L.x, L.y); }
+    else { ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = Math.min(1, -m * .75); ctx.drawImage(g.dim, L.x, L.y); }
+  });
+  ctx.restore();
+}
+
+// ============================================================ composición del fotograma
+const work = makeCanvas(SRC_W, SRC_H);
+const wctx = work.getContext("2d");
+let STATES_CACHE = null;
+function simulateAll() {
+  // Línea de tiempo determinista: un estado por paso de 60 Hz.
+  const st = initialState();
+  const out = [];
+  const snap = () => out.push(structuredClone({ ...st, events: [] }));
+  st.pack0 = packTarget(st);
+  snap();
+  for (let i = 0; i < Math.round(DURATION * SIM_HZ); i++) {
+    const ps = pose(st, st.t);
+    const M = explorerMatrices(ps);
+    st.hand = M.arm.transformPoint(new DOMPoint(RIG.hand.x, RIG.hand.y));
+    st.hand = { x: st.hand.x, y: st.hand.y };
+    st.pack0 = packTarget(st, M);
+    simulate(st);
+    snap();
+  }
+  return out;
+}
+function packTarget(st, M) {
+  if (!M) return { x: RIG.indicators[0].x, y: RIG.indicators[0].y };
+  const slot = RIG.indicators[st.collected.nodes ? 1 : 0];
+  const q = M.pack.transformPoint(new DOMPoint(slot.x + 2, slot.y + 2));
+  return { x: q.x, y: q.y };
+}
+function renderFrame(frame, target) {
+  const t = clamp(frame / FPS, 0, DURATION);
+  const st = STATES_CACHE[Math.min(STATES_CACHE.length - 1, Math.round(t * SIM_HZ))];
+  const ps = pose(st, t);
+  const M = explorerMatrices(ps);
+  const hp = M.arm.transformPoint(new DOMPoint(RIG.hand.x, RIG.hand.y));
+  const c = wctx;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+  c.imageSmoothingEnabled = false;
+  c.drawImage(img[LAYERS.plateFile], 0, 0);
+  drawClouds(c, t);
+  drawStars(c, t);
+  drawLights(c, t);
+  drawRoute(c, t, st);
+  drawSummit(c, t);
+  // iconos detrás del explorador cuando él está más cerca de la cámara
+  drawIcon(c, "gear", st, t, hp);
+  drawIcon(c, "nodes", st, t, hp);
+  drawExplorer(c, st, ps, M);
+  drawParticles(c, st);
+  const tc = target.getContext("2d");
+  tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = "high";
+  tc.drawImage(work, 0, 0, target.width, target.height);
+  return ps.state.name;
+}
+
+// ============================================================ exportación MP4 (WebCodecs + muxer ISO BMFF mínimo)
+function box(type, ...parts) {
+  const body = parts.flat(Infinity).filter(Boolean);
+  const size = 8 + body.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(size), dv = new DataView(out.buffer);
+  dv.setUint32(0, size); for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+  let o = 8; for (const p of body) { out.set(p, o); o += p.length; }
+  return out;
+}
+const u8 = (...n) => new Uint8Array(n);
+const u16 = (v) => u8(v >> 8 & 255, v & 255);
+const u32 = (v) => u8(v >>> 24 & 255, v >> 16 & 255, v >> 8 & 255, v & 255);
+const str = (s) => new Uint8Array([...s].map(c => c.charCodeAt(0)));
+const full = (type, version, flags, ...parts) => box(type, u8(version, flags >> 16 & 255, flags >> 8 & 255, flags & 255), ...parts);
+function muxMP4({ samples, avcC, width, height, fps }) {
+  const timescale = fps * 1000, sampleDur = 1000, duration = samples.length * sampleDur;
+  const matrix = [u32(0x10000), u32(0), u32(0), u32(0), u32(0x10000), u32(0), u32(0), u32(0), u32(0x40000000)];
+  const ftyp = box("ftyp", str("isom"), u32(512), str("isom"), str("iso2"), str("avc1"), str("mp41"));
+  const build = (chunkOffset) => box("moov",
+    full("mvhd", 0, 0, u32(0), u32(0), u32(timescale), u32(duration), u32(0x10000), u16(0x100), u8(0, 0), u32(0), u32(0), matrix, new Uint8Array(24), u32(2)),
+    box("trak",
+      full("tkhd", 0, 3, u32(0), u32(0), u32(1), u32(0), u32(duration), u32(0), u32(0), u16(0), u16(0), u16(0), u16(0), matrix, u32(width << 16), u32(height << 16)),
+      box("mdia",
+        full("mdhd", 0, 0, u32(0), u32(0), u32(timescale), u32(duration), u16(0x55c4), u16(0)),
+        full("hdlr", 0, 0, u32(0), str("vide"), new Uint8Array(12), str("MONT.AR video\0")),
+        box("minf",
+          full("vmhd", 0, 1, u16(0), u16(0), u16(0), u16(0)),
+          box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1))),
+          box("stbl",
+            full("stsd", 0, 0, u32(1), box("avc1", new Uint8Array(6), u16(1), new Uint8Array(16), u16(width), u16(height), u32(0x480000), u32(0x480000), u32(0), u16(1), new Uint8Array(32), u16(0x18), u16(0xffff), box("avcC", avcC))),
+            full("stts", 0, 0, u32(1), u32(samples.length), u32(sampleDur)),
+            full("stss", 0, 0, u32(samples.filter(s => s.key).length), samples.map((s, i) => s.key ? u32(i + 1) : null)),
+            full("stsc", 0, 0, u32(1), u32(1), u32(samples.length), u32(1)),
+            full("stsz", 0, 0, u32(0), u32(samples.length), samples.map(s => u32(s.data.length))),
+            full("stco", 0, 0, u32(1), u32(chunkOffset)),
+          ))))
+  );
+  const moovSize = build(0).length;
+  const moov = build(ftyp.length + moovSize + 8);
+  const mdat = box("mdat", samples.map(s => s.data));
+  const out = new Uint8Array(ftyp.length + moov.length + mdat.length);
+  out.set(ftyp, 0); out.set(moov, ftyp.length); out.set(mdat, ftyp.length + moov.length);
+  return out;
+}
+async function exportMP4({ fps = FPS, gop = 30, bitrate = 14e6, codec = "avc1.64002a", onProgress } = {}) {
+  if (typeof VideoEncoder === "undefined") throw new Error("Este navegador no ofrece WebCodecs (VideoEncoder).");
+  const canvas = makeCanvas(OUT_W, OUT_H);
+  const samples = []; let avcC = null, failure = null;
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => {
+      if (meta?.decoderConfig?.description && !avcC) avcC = new Uint8Array(meta.decoderConfig.description instanceof ArrayBuffer ? meta.decoderConfig.description : meta.decoderConfig.description.buffer);
+      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data);
+      samples.push({ data, key: chunk.type === "key", ts: chunk.timestamp });
+    },
+    error: (e) => { failure = e; },
+  });
+  encoder.configure({ codec, width: OUT_W, height: OUT_H, bitrate, framerate: fps, latencyMode: "quality", avc: { format: "avc" } });
+  const total = Math.round(DURATION * fps);
+  for (let f = 0; f < total; f++) {
+    renderFrame(f * FPS / fps, canvas);
+    const frame = new VideoFrame(canvas, { timestamp: Math.round(f * 1e6 / fps), duration: Math.round(1e6 / fps) });
+    encoder.encode(frame, { keyFrame: f % gop === 0 });
+    frame.close();
+    if (encoder.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 1));
+    if (failure) throw failure;
+    if (onProgress && f % 30 === 0) onProgress(f / total);
+  }
+  await encoder.flush(); encoder.close();
+  if (failure) throw failure;
+  samples.sort((a, b) => a.ts - b.ts);
+  return muxMP4({ samples, avcC, width: OUT_W, height: OUT_H, fps });
+}
+
+// ============================================================ hoja de contactos
+const KEY_MOMENTS = [
+  ["Inicio", 0],
+  ["Aproximación al engranaje", MS.gear.approach + .25],
+  ["Recogida del engranaje", MS.gear.contact + .1],
+  ["Aproximación a los nodos", MS.nodes.approach + .25],
+  ["Recogida de los nodos", MS.nodes.contact + .1],
+  ["Ascenso final", 8.6],
+  ["Activación de la cima", MS.summit.collected + .14],
+  ["Pose final", DURATION],
+];
+async function contactSheet() {
+  const cw = 800, ch = 450, pad = 16, label = 34;
+  const sheet = makeCanvas(cw * 2 + pad * 3, (ch + label) * 4 + pad * 5);
+  const sc = sheet.getContext("2d");
+  sc.fillStyle = "#070b39"; sc.fillRect(0, 0, sheet.width, sheet.height);
+  const cell = makeCanvas(cw, ch);
+  KEY_MOMENTS.forEach(([name, t], i) => {
+    const f = Math.min(FRAMES, Math.round(t * FPS));
+    const state = renderFrame(f, cell);
+    const x = pad + (i % 2) * (cw + pad), y = pad + Math.floor(i / 2) * (ch + label + pad);
+    sc.drawImage(cell, x, y + label);
+    sc.fillStyle = "#61f7e7"; sc.font = "16px ui-monospace, Consolas, monospace";
+    sc.fillText(`${i + 1}. ${name} — f${String(f).padStart(3, "0")} (${t.toFixed(2)} s) · ${state}`, x, y + 22);
+  });
+  return new Promise(r => sheet.toBlob(r, "image/png"));
+}
+
+// ============================================================ vista previa (acumulador de tiempo)
+const view = document.getElementById("view");
+const ui = { play: document.getElementById("play"), scrub: document.getElementById("scrub"), readout: document.getElementById("readout"), status: document.getElementById("status") };
+let current = 0, playing = false, last = 0, acc = 0;
+function show(frame) {
+  current = clamp(Math.round(frame), 0, FRAMES);
+  const name = renderFrame(current, view);
+  ui.scrub.value = current;
+  ui.readout.textContent = `${String(current).padStart(4, "0")} / ${String(FRAMES).padStart(4, "0")} · ${(current / FPS).toFixed(2)} s · ${name}`;
+}
+function loop(now) {
+  if (!playing) return;
+  acc += Math.min(.25, (now - last) / 1000); last = now;
+  let advanced = false;
+  while (acc >= DT) { acc -= DT; current++; advanced = true; }
+  if (current >= FRAMES) { current = FRAMES; playing = false; ui.play.textContent = "Reproducir"; }
+  if (advanced) show(current);
+  if (playing) requestAnimationFrame(loop);
+}
+function download(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+
+window.MontarJourney = {
+  ready: (async () => {
+    await loadImages();
+    prepareLayers();
+    STATES_CACHE = simulateAll();
+    show(0);
+    ui.play.onclick = () => { if (current >= FRAMES) current = 0; playing = !playing; ui.play.textContent = playing ? "Pausa" : "Reproducir"; last = performance.now(); acc = 0; requestAnimationFrame(loop); };
+    ui.scrub.max = FRAMES; ui.scrub.oninput = () => { playing = false; ui.play.textContent = "Reproducir"; show(+ui.scrub.value); };
+    document.getElementById("step-back").onclick = () => show(current - 1);
+    document.getElementById("step-fwd").onclick = () => show(current + 1);
+    document.getElementById("export").onclick = async () => {
+      try { ui.status.textContent = "Codificando…"; const mp4 = await exportMP4({ onProgress: k => ui.status.textContent = `Codificando ${Math.round(k * 100)} %` }); download(new Blob([mp4], { type: "video/mp4" }), "montar-explorer-journey.mp4"); ui.status.textContent = `MP4 listo (${(mp4.length / 1048576).toFixed(1)} MB)`; }
+      catch (e) { ui.status.textContent = e.message; }
+    };
+    document.getElementById("sheet").onclick = async () => { download(await contactSheet(), "montar-explorer-contact-sheet.png"); show(current); };
+    return true;
+  })(),
+  FRAMES, FPS, DURATION, TIMELINE, KEY_MOMENTS,
+  renderFrame, exportMP4, contactSheet, show,
+  stateAt: (t) => stateAt(t).name,
+};
+</script>
+</body>
+</html>

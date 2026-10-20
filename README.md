@@ -1,6 +1,6 @@
 # web-montar
 
-Hero interactivo Mont.AR construido con Next.js, React, Three.js y GSAP. La imagen de referencia no se sirve ni se usa como fondo: el hero combina dibujo en canvas y assets transparentes independientes, animados en capas.
+Web de Mont.AR construida con Next.js y React: un recorrido narrativo en el que el scroll actúa como cabezal de reproducción de la ilustración animada.
 
 ```powershell
 pnpm install --config.node-linker=hoisted
@@ -9,7 +9,31 @@ node node_modules/next/dist/bin/next dev --hostname 127.0.0.1
 
 Con una instalación estándar de pnpm también están disponibles los scripts `pnpm dev` y `pnpm build`.
 
-El hero tiene tres avances por scroll: servicios, punto de partida y formulario de proyecto. En escritorio los iconos también permiten navegar directamente; en móvil se ocultan para despejar el paisaje. Elegir una tarjeta avanza al siguiente paso y precarga la respuesta en el formulario. El botón principal lleva directamente al formulario y el enlace secundario abre WhatsApp. El formulario envía el proyecto a `/api/contact`, que entrega el correo mediante Resend. El movimiento se reduce cuando el sistema lo solicita.
+El recorrido es una experiencia controlada por scroll con cuatro etapas: **01 Home, 02 Servicios, 03 Necesidad y 04 Proyecto**. El escenario es un video pre-renderizado de la ilustración original (`public/video/montar-journey.mp4`, sin audio ni textos) que nunca se reproduce solo: la sección queda fijada (`position: sticky`) y la posición de scroll dentro de ella se convierte en el tiempo del video. Del mismo tiempo se deriva la etapa activa, así que video, textos y contador avanzan y retroceden juntos. Los textos son HTML y permanecen en el DOM; al cambiar de etapa solo cambia cuál está activa.
+
+Los tres hitos de la ilustración marcan las transiciones, en el fotograma en que el explorador toca cada objeto:
+
+| Transición | Hito | Aproximación | Contacto (cambio de etapa) | Recogida completa |
+| --- | --- | --- | --- | --- |
+| Home → Servicios | engranaje | 1,95 s · f117 | 2,80 s · f168 | 3,18 s · f191 |
+| Servicios → Necesidad | nodos | 5,20 s · f312 | 6,05 s · f363 | 6,43 s · f386 |
+| Necesidad → Proyecto | interfaz de la cima | 9,90 s · f594 | 10,80 s · f648 | 10,95 s · f657 |
+
+(fotogramas a 60 fps del máster). Los tiempos viven en un único archivo, `src/lib/journey-timeline.json`, que usan tanto el generador del video como la web (`src/lib/journey-config.ts`, donde también se ajusta el largo del scroll).
+
+El contador inferior (`01 / 04 — Home`…) funciona también como navegación entre etapas. Elegir una tarjeta lleva a la etapa siguiente y precarga la respuesta en el formulario. El botón principal lleva directamente al formulario y el enlace secundario abre WhatsApp. El formulario envía el proyecto a `/api/contact`, que entrega el correo mediante Resend. En pantallas verticales el encuadre del video acompaña al explorador. Con `prefers-reduced-motion` la página pasa a una lectura secuencial: cuatro secciones con un fotograma fijo de cada etapa, sin video.
+
+## Video del recorrido
+
+`tools/journey/` genera la animación a partir de `tools/journey/reference/montar-reference.png` (la ilustración sin textos):
+
+```powershell
+node tools/journey/prepare-layers.mjs   # máscaras, placas limpias y recortes del explorador → tools/journey/layers/
+node tools/journey/build-html.mjs       # out/montar-explorer-journey.html (autocontenido, sin red)
+node tools/journey/render-server.mjs    # vista previa en http://127.0.0.1:4317/
+```
+
+El HTML incluye la vista previa fotograma a fotograma, la exportación MP4 (WebCodecs, 1600×900, 60 fps, 720 fotogramas) y la hoja de contactos. Los resultados están en `out/`: `montar-explorer-journey.mp4` (máster) y `montar-explorer-contact-sheet.png`. La versión web de `public/video/` se exporta desde el mismo HTML a 30 fps con un fotograma clave cada 5 para que buscar hacia atrás sea fluido: `MontarJourney.exportMP4({ fps: 30, gop: 5, bitrate: 6e6 })`.
 
 ## Contenido
 
@@ -25,9 +49,3 @@ La integración usa la [API de Resend](https://resend.com/docs/api-reference/ema
 4. Configurar las mismas variables en el entorno donde se despliegue Next.js.
 
 El destinatario predeterminado es `fabricio@montivero.ar` desde `content.json`; `CONTACT_TO_EMAIL` permite cambiarlo sin tocar el contenido público. La clave queda en el servidor y `.env.local` está excluido de Git. El formulario valida los datos en el servidor y solo confirma el envío cuando Resend acepta el mensaje. Sin clave o remitente configurados, muestra un error y no afirma que se haya enviado.
-
-Las nubes, la cordillera, el sendero y cinco posturas del explorador son PNG transparentes en `public/art/`, generados a partir de la referencia. La cordillera queda fija, las nubes se desplazan horizontalmente y el explorador alterna los pies durante cada avance con GSAP. El sol es un círculo CSS independiente que conserva su proporción en cualquier pantalla. `src/components/city-layer.tsx` dibuja una ciudad lejana con luces cálidas que parpadean; `src/components/river-layer.tsx` dibuja un río angosto y estático. El texto tiene una entrada única al cargar la página. Las posiciones de las luces urbanas se trazaron desde la referencia a `src/components/city-lights.ts`; para regenerarlas se puede ejecutar `node tools/trace-city-lights.mjs` desde este directorio.
-
-El sendero conserva los arbustos de su lado izquierdo porque se muestra sin máscara de recorte. Las estrellas se dibujan en un canvas independiente a resolución de pantalla, con puntos suaves y halos tenues.
-
-Los assets del paisaje y el explorador tienen variantes pequeñas, originales y grandes en `public/art/`. Cada imagen del paisaje declara `srcSet` y `sizes` para que el navegador elija según el ancho y la densidad de píxeles del dispositivo; el canvas del explorador selecciona el nivel con el mismo criterio. Las variantes se regeneran con `node tools/build-responsive-art.mjs`.

@@ -1,0 +1,25 @@
+{
+  "fps": 60,
+  "duration": 12,
+  "width": 1600,
+  "height": 900,
+  "states": [
+    { "name": "START", "start": 0, "end": 0.35 },
+    { "name": "WALK", "start": 0.35, "end": 1.95 },
+    { "name": "APPROACH", "start": 1.95, "end": 2.45, "target": "gear" },
+    { "name": "COLLECT", "start": 2.45, "end": 3.45, "target": "gear" },
+    { "name": "ACCELERATE", "start": 3.45, "end": 3.9 },
+    { "name": "WALK", "start": 3.9, "end": 5.2 },
+    { "name": "APPROACH", "start": 5.2, "end": 5.7, "target": "nodes" },
+    { "name": "COLLECT", "start": 5.7, "end": 6.7, "target": "nodes" },
+    { "name": "ACCELERATE", "start": 6.7, "end": 7.1 },
+    { "name": "CLIMB", "start": 7.1, "end": 9.9 },
+    { "name": "ARRIVE", "start": 9.9, "end": 10.8, "target": "summit" },
+    { "name": "VICTORY", "start": 10.8, "end": 12 }
+  ],
+  "milestones": [
+    { "id": "gear", "approach": 1.95, "contact": 2.8, "collected": 3.18, "end": 3.45 },
+    { "id": "nodes", "approach": 5.2, "contact": 6.05, "collected": 6.43, "end": 6.7 },
+    { "id": "summit", "approach": 9.9, "contact": 10.8, "collected": 10.95, "end": 12 }
+  ]
+}

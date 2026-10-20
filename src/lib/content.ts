@@ -2,6 +2,7 @@ import rawContent from "../../content.json";
 
 type HeroSection = {
   id: "hero";
+  stageLabel: string;
   titlePrefix: string;
   title: string;
   subtitle: string;
@@ -12,6 +13,7 @@ type HeroSection = {
 type ServicesSection = {
   id: "what-i-do";
   navLabel: string;
+  stageLabel: string;
   title: string;
   descripcion: string;
   list: string[];
@@ -22,6 +24,7 @@ type ServicesSection = {
 type StartingSection = {
   id: "starting-point";
   navLabel: string;
+  stageLabel: string;
   title: string;
   descripcion: string;
   list: { title: string; description: string }[];
@@ -30,6 +33,7 @@ type StartingSection = {
 type ProjectSection = {
   id: "project";
   navLabel: string;
+  stageLabel: string;
   title: string;
   descripcion: string;
   form: {
@@ -56,6 +60,7 @@ type SiteContent = {
   marca: { nombre: string; firma: string };
   interfaz: {
     scroll: string;
+    playhead: string;
     recorridoCompleto: string;
     inicio: string;
     etapas: string;

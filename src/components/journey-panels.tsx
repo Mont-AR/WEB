@@ -27,9 +27,9 @@ function ChoiceArrow() {
   return <svg className="choice-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 10h15m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="2"/></svg>;
 }
 
-export function ServicesPanel({ selected, onChoose }: { selected: string; onChoose: (value: string) => void }) {
+export function ServicesPanel({ kicker, selected, onChoose }: { kicker: string; selected: string; onChoose: (value: string) => void }) {
   return <section className="content-panel services-panel" aria-labelledby="services-title">
-    <p className="panel-kicker">01 / {servicesContent.navLabel}</p>
+    <p className="panel-kicker">{kicker}</p>
     <h2 id="services-title">{servicesContent.title}</h2>
     <p className="panel-lead">{servicesContent.descripcion}</p>
     <div className="choices services-grid">
@@ -41,9 +41,9 @@ export function ServicesPanel({ selected, onChoose }: { selected: string; onChoo
   </section>;
 }
 
-export function StartingPanel({ selected, onChoose }: { selected: string; onChoose: (value: string) => void }) {
+export function StartingPanel({ kicker, selected, onChoose }: { kicker: string; selected: string; onChoose: (value: string) => void }) {
   return <section className="content-panel starting-panel" aria-labelledby="starting-title">
-    <p className="panel-kicker">02 / {startingContent.navLabel}</p>
+    <p className="panel-kicker">{kicker}</p>
     <h2 id="starting-title">{startingContent.title}</h2>
     <p className="panel-lead">{startingContent.descripcion}</p>
     <div className="choices starting-grid">
@@ -54,7 +54,8 @@ export function StartingPanel({ selected, onChoose }: { selected: string; onChoo
   </section>;
 }
 
-export function ProjectPanel({ service, startingPoint, onServiceChange, onStartingPointChange }: {
+export function ProjectPanel({ kicker, service, startingPoint, onServiceChange, onStartingPointChange }: {
+  kicker: string;
   service: string;
   startingPoint: string;
   onServiceChange: (value: string) => void;
@@ -91,7 +92,7 @@ export function ProjectPanel({ service, startingPoint, onServiceChange, onStarti
   };
 
   return <section className="content-panel project-panel" aria-labelledby="project-title">
-    <p className="panel-kicker">03 / {projectContent.navLabel}</p>
+    <p className="panel-kicker">{kicker}</p>
     <h2 id="project-title">{projectContent.title}</h2>
     <p className="panel-lead">{projectContent.descripcion}</p>
     <form className="project-form" onSubmit={submit}>
