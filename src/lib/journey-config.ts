@@ -14,9 +14,12 @@ export const JOURNEY = {
   fps: 30, // cadencia del video web (el máster de 60 fps queda en out/)
   video: "/video/montar-journey.mp4",
   posters: [0, 1, 2, 3].map((index) => `/video/montar-journey-poster-${index}.webp`),
-  // Recorrido del scroll: alto por segundo de animación y tramo final estable en la cima.
-  vhPerSecond: 48,
-  endHoldVh: 70,
+  // Cada etapa ocupa una pantalla de scroll; el scroll se ajusta (snap) a cada una.
+  vhPerStage: 100,
+  // Reproducción entre etapas: velocidad mínima (s de animación por s real) y duración máxima
+  // de un salto largo, para que cruzar varias etapas desde la navegación no se haga eterno.
+  minSpeed: 1.4,
+  maxTravel: 3.6,
   // Encuadre horizontal en pantallas verticales: del inicio del sendero a la cima.
   panStart: 78,
   panEnd: 100,
@@ -33,22 +36,23 @@ export const STAGES: { id: StageId; label: string; start: number; anchor: number
   { id: "proyecto", label: projectContent.stageLabel, start: milestone("summit").contact, anchor: timeline.duration },
 ];
 
-const totalUnits = JOURNEY.duration * JOURNEY.vhPerSecond + JOURNEY.endHoldVh;
+const segments = STAGES.length - 1;
 
 /** Alto total de la pista de scroll (incluye el viewport fijado). */
-export const trackHeight = `calc(100svh + ${totalUnits}svh)`;
+export const trackHeight = `calc(100svh + ${segments * JOURNEY.vhPerStage}svh)`;
 
-/** Progreso de la pista (0–1) → segundos de animación. El tramo final mantiene la cima. */
-export function timeAtProgress(progress: number) {
-  const units = Math.min(1, Math.max(0, progress)) * totalUnits;
-  return Math.min(JOURNEY.duration, units / JOURNEY.vhPerSecond);
+/** Progreso de la pista de cada etapa (0, 1/3, 2/3, 1): donde se ajusta el scroll. */
+export const stageProgress = (index: number) => index / segments;
+
+/**
+ * Progreso de la pista (0–1) → tiempo de destino. Entre dos puntos de ajuste se interpola
+ * entre los tiempos de sus etapas; en reposo el destino es siempre el ancla de una etapa.
+ */
+export function targetAtProgress(progress: number) {
+  const p = Math.min(1, Math.max(0, progress)) * segments;
+  const i = Math.min(segments - 1, Math.floor(p));
+  return STAGES[i].anchor + (STAGES[i + 1].anchor - STAGES[i].anchor) * (p - i);
 }
-
-/** Segundos → progreso de la pista (para posicionar anclas de navegación). */
-export function progressAtTime(seconds: number) {
-  return Math.min(1, Math.max(0, seconds) * JOURNEY.vhPerSecond / totalUnits);
-}
-
 export function stageAtTime(seconds: number) {
   let index = 0;
   STAGES.forEach((stage, i) => { if (seconds >= stage.start) index = i; });

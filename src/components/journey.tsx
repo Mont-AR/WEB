@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { JourneyVideo } from "./journey-video";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
 import { content, heroContent } from "@/lib/content";
-import { JOURNEY, STAGES, formatStage, progressAtTime, stageAtTime, timeAtProgress, trackHeight } from "@/lib/journey-config";
+import { JOURNEY, STAGES, formatStage, stageAtTime, stageProgress, targetAtProgress, trackHeight } from "@/lib/journey-config";
 
 function Icon({kind}: {kind:number}) {
   if(kind===0) return <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M3 34 15 15l7 10 5-6 10 15H3Z" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter"/><path d="M15 15V5h9l-3 3 3 3h-9" stroke="currentColor" strokeWidth="3"/></svg>;
@@ -26,7 +26,9 @@ export function Journey() {
   const [startingPoint,setStartingPoint]=useState("");
   const trackRef=useRef<HTMLDivElement>(null);
   const stageRef=useRef<HTMLDivElement>(null);
-  // Única fuente de verdad: el tiempo de animación derivado del scroll.
+  // El scroll fija el destino; el cabezal (timeRef) avanza hacia él reproduciendo la animación.
+  // Video, textos y contador leen solo el cabezal.
+  const targetRef=useRef(0);
   const timeRef=useRef(0);
   const whatsapp=`https://wa.me/${content.contacto.whatsapp}?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto`;
 
@@ -36,19 +38,48 @@ export function Journey() {
     return()=>media.removeEventListener("change",update);
   },[]);
 
-  // Scroll → progreso de la pista → segundos → etapa. El video lee timeRef en su propio rAF.
+  // Scroll → progreso de la pista → tiempo de destino. El scroll se ajusta a cada etapa, así que
+  // en reposo el destino es el ancla de una etapa.
   useEffect(()=>{
     if(reducedMotion) return;
+    let first=true;
     const update=()=>{
       const track=trackRef.current, sticky=stageRef.current;
       if(!track||!sticky) return;
       const distance=track.offsetHeight-sticky.offsetHeight;
       const progress=distance>0?-track.getBoundingClientRect().top/distance:0;
-      timeRef.current=timeAtProgress(progress);
-      setStage(stageAtTime(timeRef.current));
+      targetRef.current=targetAtProgress(progress);
+      // Al cargar en mitad del recorrido se muestra directamente ese punto, sin reproducir desde el inicio.
+      if(first){timeRef.current=targetRef.current;first=false;setStage(stageAtTime(timeRef.current));}
     };
     update();window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);
     return()=>{window.removeEventListener("scroll",update);window.removeEventListener("resize",update);};
+  },[reducedMotion]);
+
+  // Cabezal: recorre la animación hasta el destino a velocidad de reproducción (con aceleración
+  // y frenado suaves), en ambos sentidos. La etapa cambia cuando el explorador toca cada hito.
+  useEffect(()=>{
+    if(reducedMotion) return;
+    let frame=0, last=performance.now(), speed=0, direction=0, cruise=0, tripTarget=NaN;
+    const tick=(now:number)=>{
+      // tiempo real aunque el navegador pinte a menos cuadros (solo se limita tras una pausa larga)
+      const dt=Math.min(.12,(now-last)/1000); last=now;
+      const remaining=targetRef.current-timeRef.current, distance=Math.abs(remaining);
+      if(distance<1e-3){timeRef.current=targetRef.current;speed=0;direction=0;tripTarget=NaN;}
+      else{
+        const dir=Math.sign(remaining);
+        if(dir!==direction){direction=dir;speed=0;}
+        // velocidad de crucero fijada por trayecto: un salto largo dura como mucho maxTravel
+        if(targetRef.current!==tripTarget){tripTarget=targetRef.current;cruise=Math.max(JOURNEY.minSpeed,distance/JOURNEY.maxTravel);}
+        const desired=cruise*Math.min(1,.3+distance/.5);
+        speed+=Math.max(-6*dt,Math.min(6*dt,desired-speed));
+        const step=speed*dt;
+        timeRef.current=step>=distance?targetRef.current:timeRef.current+dir*step;
+      }
+      setStage(stageAtTime(timeRef.current));      frame=requestAnimationFrame(tick);
+    };
+    frame=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(frame);
   },[reducedMotion]);
 
   // Lectura secuencial: la etapa activa es la sección visible.
@@ -76,6 +107,7 @@ export function Journey() {
   const goTo=(index:number)=>{
     const target=document.getElementById(`etapa-${index}`);
     if(!target)return;
+    // El scroll llega al ancla; el cabezal recorre la animación desde el punto actual hasta allí.
     window.scrollTo({top:target.getBoundingClientRect().top+window.scrollY,behavior:"instant"});
   };
 
@@ -125,7 +157,7 @@ export function Journey() {
 
   return <main aria-busy={!assetsReady}>
     <div className="journey-track" ref={trackRef} style={{height:trackHeight}}>
-      {STAGES.map((item,index)=><span key={item.id} id={`etapa-${index}`} className="stage-anchor" style={{top:`calc((100% - 100svh) * ${index===STAGES.length-1?1:progressAtTime(item.anchor)})`}} aria-hidden="true"/>)}
+      {STAGES.map((item,index)=><span key={item.id} id={`etapa-${index}`} className="stage-anchor" style={{top:`calc((100% - 100svh) * ${stageProgress(index)})`}} aria-hidden="true"/>)}
       <div className="fixed-stage" ref={stageRef} data-step={stage}>
         <JourneyVideo timeRef={timeRef} stage={stage}/>
         <div className="scene-vignette" aria-hidden="true"/>

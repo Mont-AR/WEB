@@ -96,25 +96,29 @@ export function ProjectPanel({ kicker, service, startingPoint, onServiceChange, 
     <h2 id="project-title">{projectContent.title}</h2>
     <p className="panel-lead">{projectContent.descripcion}</p>
     <form className="project-form" onSubmit={submit}>
-      <label htmlFor="contact-method">{formCopy.contactMethod}</label>
-      <div className="contact-fields">
-        <select id="contact-method" value={contactMethod} onChange={(event) => { setContactMethod(event.target.value as "email" | "telefono"); setContactValue(""); }}>
-          <option value="email">{formCopy.email}</option><option value="telefono">{formCopy.phone}</option>
+      <div className="form-col">
+        <label htmlFor="contact-method">{formCopy.contactMethod}</label>
+        <div className="contact-fields">
+          <select id="contact-method" value={contactMethod} onChange={(event) => { setContactMethod(event.target.value as "email" | "telefono"); setContactValue(""); }}>
+            <option value="email">{formCopy.email}</option><option value="telefono">{formCopy.phone}</option>
+          </select>
+          <input aria-label={contactMethod === "email" ? formCopy.email : formCopy.phone} type={contactMethod === "email" ? "email" : "tel"} value={contactValue} onChange={(event) => setContactValue(event.target.value)} autoComplete={contactMethod === "email" ? "email" : "tel"} placeholder={contactMethod === "email" ? formCopy.emailPlaceholder : formCopy.phonePlaceholder} required />
+        </div>
+        <label htmlFor="service-select">{formCopy.service}</label>
+        <select id="service-select" value={service} onChange={(event) => onServiceChange(event.target.value)} required>
+          <option value="" disabled>{formCopy.choose}</option>{services.map((value) => <option key={value} value={value}>{serviceLabel(value)}</option>)}
         </select>
-        <input aria-label={contactMethod === "email" ? formCopy.email : formCopy.phone} type={contactMethod === "email" ? "email" : "tel"} value={contactValue} onChange={(event) => setContactValue(event.target.value)} autoComplete={contactMethod === "email" ? "email" : "tel"} placeholder={contactMethod === "email" ? formCopy.emailPlaceholder : formCopy.phonePlaceholder} required />
+        <label htmlFor="starting-select">{formCopy.startingPoint}</label>
+        <select id="starting-select" value={startingPoint} onChange={(event) => onStartingPointChange(event.target.value)} required>
+          <option value="" disabled>{formCopy.choose}</option>{startingPoints.map((item) => <option key={item.title} value={item.title}>{item.title}</option>)}
+        </select>
       </div>
-      <label htmlFor="service-select">{formCopy.service}</label>
-      <select id="service-select" value={service} onChange={(event) => onServiceChange(event.target.value)} required>
-        <option value="" disabled>{formCopy.choose}</option>{services.map((value) => <option key={value} value={value}>{serviceLabel(value)}</option>)}
-      </select>
-      <label htmlFor="starting-select">{formCopy.startingPoint}</label>
-      <select id="starting-select" value={startingPoint} onChange={(event) => onStartingPointChange(event.target.value)} required>
-        <option value="" disabled>{formCopy.choose}</option>{startingPoints.map((item) => <option key={item.title} value={item.title}>{item.title}</option>)}
-      </select>
-      <label htmlFor="description">{formCopy.description}</label>
-      <textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={formCopy.descriptionPlaceholder} rows={4} minLength={10} maxLength={3000} required />
+      <div className="form-col">
+        <label htmlFor="description">{formCopy.description}</label>
+        <textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={formCopy.descriptionPlaceholder} rows={4} minLength={10} maxLength={3000} required />
+        <button className="hero-button form-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? formCopy.submitting : formCopy.submit} <ChoiceArrow/></button>
+      </div>
       <div className="sr-only" aria-hidden="true"><label htmlFor="website">No completar</label><input id="website" name="website" tabIndex={-1} autoComplete="off" /></div>
-      <button className="hero-button form-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? formCopy.submitting : formCopy.submit} <ChoiceArrow/></button>
       {status && <p className="form-status" role="status">{status}</p>}
     </form>
   </section>;

@@ -9,7 +9,7 @@ node node_modules/next/dist/bin/next dev --hostname 127.0.0.1
 
 Con una instalación estándar de pnpm también están disponibles los scripts `pnpm dev` y `pnpm build`.
 
-El recorrido es una experiencia controlada por scroll con cuatro etapas: **01 Home, 02 Servicios, 03 Necesidad y 04 Proyecto**. El escenario es un video pre-renderizado de la ilustración original (`public/video/montar-journey.mp4`, sin audio ni textos) que nunca se reproduce solo: la sección queda fijada (`position: sticky`) y la posición de scroll dentro de ella se convierte en el tiempo del video. Del mismo tiempo se deriva la etapa activa, así que video, textos y contador avanzan y retroceden juntos. Los textos son HTML y permanecen en el DOM; al cambiar de etapa solo cambia cuál está activa.
+El recorrido es una experiencia controlada por scroll con cuatro etapas: **01 Home, 02 Servicios, 03 Necesidad y 04 Proyecto**. El escenario es un video pre-renderizado de la ilustración original (`public/video/montar-journey.mp4`, sin audio ni textos) que nunca se reproduce solo: la sección queda fijada (`position: sticky`) y el scroll se ajusta (scroll-snap nativo) a una etapa por gesto. Cada etapa fija un destino en la animación y el cabezal la recorre hasta allí a velocidad de reproducción, hacia adelante o hacia atrás, así que entre dos vistas se ve todo el tramo del explorador. La etapa activa se deriva del mismo cabezal: el texto cambia cuando el explorador toca cada hito, y video, textos y contador se mantienen sincronizados. La navegación inferior y los botones llevan el scroll a la etapa elegida y el cabezal recorre la animación desde el punto actual (un salto largo dura como mucho unos 3,6 s). Los textos son HTML y permanecen en el DOM; al cambiar de etapa solo cambia cuál está activa.
 
 Los tres hitos de la ilustración marcan las transiciones, en el fotograma en que el explorador toca cada objeto:
 
@@ -19,7 +19,7 @@ Los tres hitos de la ilustración marcan las transiciones, en el fotograma en qu
 | Servicios → Necesidad | nodos | 5,20 s · f312 | 6,05 s · f363 | 6,43 s · f386 |
 | Necesidad → Proyecto | interfaz de la cima | 9,90 s · f594 | 10,80 s · f648 | 10,95 s · f657 |
 
-(fotogramas a 60 fps del máster). Los tiempos viven en un único archivo, `src/lib/journey-timeline.json`, que usan tanto el generador del video como la web (`src/lib/journey-config.ts`, donde también se ajusta el largo del scroll).
+(fotogramas a 60 fps del máster). Los tiempos viven en un único archivo, `src/lib/journey-timeline.json`, que usan tanto el generador del video como la web (`src/lib/journey-config.ts`, donde también se ajustan el alto de scroll por etapa y la velocidad de reproducción).
 
 El contador inferior (`01 / 04 — Home`…) funciona también como navegación entre etapas. Elegir una tarjeta lleva a la etapa siguiente y precarga la respuesta en el formulario. El botón principal lleva directamente al formulario y el enlace secundario abre WhatsApp. El formulario envía el proyecto a `/api/contact`, que entrega el correo mediante Resend. En pantallas verticales el encuadre del video acompaña al explorador. Con `prefers-reduced-motion` la página pasa a una lectura secuencial: cuatro secciones con un fotograma fijo de cada etapa, sin video.
 
