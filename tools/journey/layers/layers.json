@@ -192,38 +192,38 @@
   "parts": {
    "torso": {
     "file": "explorer-torso.png",
-    "x": 1055,
-    "y": 611,
-    "w": 115,
-    "h": 189
+    "x": 1063,
+    "y": 612,
+    "w": 99,
+    "h": 106
    },
    "head": {
     "file": "explorer-head.png",
-    "x": 1091,
-    "y": 561,
-    "w": 72,
-    "h": 53
+    "x": 1092,
+    "y": 562,
+    "w": 70,
+    "h": 52
    },
    "arm": {
     "file": "explorer-arm.png",
     "x": 1133,
     "y": 629,
-    "w": 50,
-    "h": 90
+    "w": 49,
+    "h": 82
    },
    "backLeg": {
     "file": "explorer-backLeg.png",
-    "x": 1084,
+    "x": 1078,
     "y": 711,
-    "w": 59,
-    "h": 94
+    "w": 65,
+    "h": 93
    },
    "frontLeg": {
     "file": "explorer-frontLeg.png",
-    "x": 1118,
+    "x": 1119,
     "y": 711,
-    "w": 39,
-    "h": 81
+    "w": 36,
+    "h": 80
    },
    "backpack": {
     "file": "explorer-backpack.png",
@@ -232,21 +232,28 @@
     "w": 53,
     "h": 88
    }
+  },
+  "glow": {
+   "file": "explorer-glow.png",
+   "x": 1054,
+   "y": 642,
+   "w": 9,
+   "h": 27
   }
  },
  "gear": {
   "file": "icon-gear.png",
-  "x": 1280,
-  "y": 578,
-  "w": 105,
-  "h": 104
+  "x": 1284,
+  "y": 582,
+  "w": 97,
+  "h": 98
  },
  "nodes": {
   "file": "icon-nodes.png",
-  "x": 1424,
-  "y": 505,
-  "w": 88,
-  "h": 93
+  "x": 1428,
+  "y": 509,
+  "w": 78,
+  "h": 85
  },
  "summit": {
   "file": "icon-summit-glow.png",

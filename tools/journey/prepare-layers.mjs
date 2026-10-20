@@ -175,6 +175,188 @@ function inpaint(rgb, fill, allow, { half = 4, radius = 56, label = "" } = {}) {
   return work;
 }
 
+// ---------------------------------------------------------------- completado multiescala
+// Completado coherente (Wexler et al. con PatchMatch): en cada escala se busca, para cada
+// parche que toca el hueco, el parche más parecido del entorno permitido, y cada píxel se
+// recompone con los parches que lo cubren. La última pasada no promedia: toma el píxel del
+// parche más parecido, para no suavizar los bloques del pixel art.
+function complete(rgb, fill, allow, { half = 3, levels = 4, window = 90, label = "", seed = 7, keepInit = false } = {}) {
+  let rnd = seed >>> 0;
+  const random = () => { rnd = (rnd * 1664525 + 1013904223) >>> 0; return rnd / 4294967296; };
+  // recorte de trabajo
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  for (let i = 0; i < N; i++) if (fill[i]) { const x = i % W, y = (i / W) | 0; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const pad = window + half * 2;
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
+  const base = { w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  base.col = new Float32Array(base.w * base.h * 3); base.fill = new Uint8Array(base.w * base.h); base.allow = new Uint8Array(base.w * base.h);
+  for (let y = 0; y < base.h; y++) for (let x = 0; x < base.w; x++) {
+    const i = at(x0 + x, y0 + y), j = y * base.w + x;
+    base.col.set([rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]], j * 3);
+    base.fill[j] = fill[i]; base.allow[j] = allow[i] && !fill[i] ? 1 : 0;
+  }
+  // pirámide: color promediado; hueco si algún hijo es hueco; origen permitido si todos lo son
+  const pyr = [base];
+  for (let l = 1; l < levels; l++) {
+    const p = pyr[l - 1], w = Math.ceil(p.w / 2), h = Math.ceil(p.h / 2);
+    const q = { w, h, col: new Float32Array(w * h * 3), fill: new Uint8Array(w * h), allow: new Uint8Array(w * h) };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let n = 0, f = 0, a = 1; const acc = [0, 0, 0];
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+        const xx = 2 * x + dx, yy = 2 * y + dy; if (xx >= p.w || yy >= p.h) continue;
+        const k = yy * p.w + xx; f |= p.fill[k]; a &= p.allow[k];
+        if (!p.fill[k]) { n++; for (let c = 0; c < 3; c++) acc[c] += p.col[k * 3 + c]; }
+      }
+      const j = y * w + x; q.fill[j] = f; q.allow[j] = a && !f ? 1 : 0;
+      if (n) for (let c = 0; c < 3; c++) q.col[j * 3 + c] = acc[c] / n;
+    }
+    pyr.push(q);
+  }
+  // relleno inicial en la escala más gruesa: difusión desde el borde (o el relleno recibido,
+  // si se usa como refinamiento de otro método)
+  if (!keepInit) {
+    const p = pyr[levels - 1]; const known = Uint8Array.from(p.fill, f => f ? 0 : 1);
+    let left = p.fill.reduce((s, v) => s + v, 0);
+    while (left > 0) {
+      const next = [];
+      for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) {
+        const j = y * p.w + x; if (known[j]) continue;
+        let n = 0; const acc = [0, 0, 0];
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= p.w || yy >= p.h) continue; const k = yy * p.w + xx; if (!known[k]) continue; n++; for (let c = 0; c < 3; c++) acc[c] += p.col[k * 3 + c]; }
+        if (n) next.push([j, acc.map(v => v / n)]);
+      }
+      if (!next.length) break;
+      for (const [j, c] of next) { p.col.set(c, j * 3); known[j] = 1; left--; }
+    }
+  }
+  let nnf = null;
+  for (let l = levels - 1; l >= 0; l--) {
+    const p = pyr[l], { w, h, col } = p, win = Math.max(8, Math.round(window / 2 ** l));
+    // centros válidos de origen
+    const valid = new Uint8Array(w * h);
+    for (let y = half; y < h - half; y++) for (let x = half; x < w - half; x++) {
+      let ok = 1;
+      for (let dy = -half; dy <= half && ok; dy++) for (let dx = -half; dx <= half; dx++) if (!p.allow[(y + dy) * w + x + dx]) { ok = 0; break; }
+      valid[y * w + x] = ok;
+    }
+    // parches objetivo: los que tocan el hueco
+    const targets = [];
+    const touch = new Uint8Array(w * h);
+    for (let y = half; y < h - half; y++) for (let x = half; x < w - half; x++) {
+      let t = 0;
+      for (let dy = -half; dy <= half && !t; dy++) for (let dx = -half; dx <= half; dx++) if (p.fill[(y + dy) * w + x + dx]) { t = 1; break; }
+      if (t) { touch[y * w + x] = 1; targets.push(y * w + x); }
+    }
+    const dist = (pc, qc, best = Infinity) => {
+      const px = pc % w, py = (pc / w) | 0, qx = qc % w, qy = (qc / w) | 0;
+      let d = 0;
+      for (let dy = -half; dy <= half; dy++) {
+        const a0 = ((py + dy) * w + px) * 3, b0 = ((qy + dy) * w + qx) * 3;
+        for (let dx = -half; dx <= half; dx++) {
+          const a = a0 + dx * 3, b = b0 + dx * 3;
+          const e0 = col[a] - col[b], e1 = col[a + 1] - col[b + 1], e2 = col[a + 2] - col[b + 2];
+          d += e0 * e0 + e1 * e1 + e2 * e2;
+        }
+        if (d >= best) return d;
+      }
+      return d;
+    };
+    const randomValid = (pc) => {
+      const px = pc % w, py = (pc / w) | 0;
+      // primero cerca; si no hay origen válido, se amplía la ventana de a poco
+      for (let r = win; r <= win * 4; r *= 2) for (let k = 0; k < 80; k++) {
+        const x = Math.round(px + (random() * 2 - 1) * r), y = Math.round(py + (random() * 2 - 1) * r);
+        if (x < half || y < half || x >= w - half || y >= h - half) continue;
+        if (valid[y * w + x]) return y * w + x;
+      }
+      for (let k = 0; k < 4000; k++) { const j = Math.floor(random() * w * h); if (valid[j]) return j; }
+      return -1;
+    };
+    // inicialización del campo de correspondencias (desde la escala anterior si existe)
+    const map = new Int32Array(w * h).fill(-1), cost = new Float64Array(w * h).fill(Infinity);
+    for (const t of targets) {
+      let q = -1;
+      if (nnf) {
+        const tx = t % w, ty = (t / w) | 0, pw = pyr[l + 1].w;
+        const prev = nnf[Math.min(pyr[l + 1].h - 1, ty >> 1) * pw + Math.min(pw - 1, tx >> 1)];
+        if (prev >= 0) { const qx = (prev % pw) * 2 + (tx & 1), qy = ((prev / pw) | 0) * 2 + (ty & 1); if (qx >= half && qy >= half && qx < w - half && qy < h - half && valid[qy * w + qx]) q = qy * w + qx; }
+      }
+      if (q < 0) q = randomValid(t);
+      map[t] = q; cost[t] = q >= 0 ? dist(t, q) : Infinity;
+    }
+    const iterations = l === 0 ? 8 : 7;
+    for (let it = 0; it < iterations; it++) {
+      // PatchMatch: propagación y búsqueda aleatoria
+      for (let pass = 0; pass < 2; pass++) {
+        const forward = (it + pass) % 2 === 0;
+        for (let k = 0; k < targets.length; k++) {
+          const t = targets[forward ? k : targets.length - 1 - k];
+          const tx = t % w, ty = (t / w) | 0, s = forward ? -1 : 1;
+          for (const n of [t + s, t + s * w]) {
+            if (n < 0 || n >= w * h || map[n] < 0) continue;
+            const q = map[n] - (n - t);
+            const qx = q % w, qy = (q / w) | 0;
+            if (q < 0 || q >= w * h || Math.abs(qx - (map[n] % w)) > 1 || !valid[q]) continue;
+            if (Math.abs(qx - tx) > win || Math.abs(qy - ty) > win) continue;
+            const d = dist(t, q, cost[t]); if (d < cost[t]) { cost[t] = d; map[t] = q; }
+          }
+          for (let r = win; r >= 1; r >>= 1) {
+            const b = map[t]; if (b < 0) break;
+            const x = Math.round((b % w) + (random() * 2 - 1) * r), y = Math.round(((b / w) | 0) + (random() * 2 - 1) * r);
+            if (x < half || y < half || x >= w - half || y >= h - half || Math.abs(x - tx) > win || Math.abs(y - ty) > win) continue;
+            const q = y * w + x; if (!valid[q]) continue;
+            const d = dist(t, q, cost[t]); if (d < cost[t]) { cost[t] = d; map[t] = q; }
+          }
+        }
+      }
+      // votación
+      // En la escala fina no se promedia: cada píxel toma el color del parche más parecido que
+      // lo cubre, así la textura se copia en lugar de lavarse.
+      const finalPass = l === 0 && (keepInit || it >= 1);
+      const sorted = targets.map(t => cost[t]).filter(Number.isFinite).sort((a, b) => a - b);
+      const sigma2 = Math.max(1, sorted[Math.floor(sorted.length * .3)] || 1);
+      const acc = new Float64Array(w * h * 3), wsum = new Float64Array(w * h), best = new Float64Array(w * h).fill(Infinity);
+      const pick = finalPass ? new Float32Array(w * h * 3) : null;
+      for (const t of targets) {
+        const q = map[t]; if (q < 0) continue;
+        const tx = t % w, ty = (t / w) | 0, qx = q % w, qy = (q / w) | 0;
+        const wt = Math.exp(-cost[t] / (2 * sigma2));
+        for (let dy = -half; dy <= half; dy++) for (let dx = -half; dx <= half; dx++) {
+          const j = (ty + dy) * w + tx + dx; if (!p.fill[j]) continue;
+          const s = (qy + dy) * w + qx + dx;
+          if (finalPass) { if (cost[t] < best[j]) { best[j] = cost[t]; pick.set([col[s * 3], col[s * 3 + 1], col[s * 3 + 2]], j * 3); } }
+          else { wsum[j] += wt; for (let c = 0; c < 3; c++) acc[j * 3 + c] += wt * col[s * 3 + c]; }
+        }
+      }
+      for (let j = 0; j < w * h; j++) {
+        if (!p.fill[j]) continue;
+        if (finalPass) { if (best[j] < Infinity) col.set(pick.subarray(j * 3, j * 3 + 3), j * 3); }
+        else if (wsum[j] > 0) for (let c = 0; c < 3; c++) col[j * 3 + c] = acc[j * 3 + c] / wsum[j];
+      }
+      // los costes dependen de los colores recién votados
+      for (const t of targets) if (map[t] >= 0) cost[t] = dist(t, map[t]);
+    }
+    nnf = map;
+    // subir de escala: el hueco de la escala siguiente parte de esta reconstrucción
+    if (l > 0) {
+      const f = pyr[l - 1];
+      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+        const j = y * f.w + x; if (!f.fill[j]) continue;
+        const k = Math.min(h - 1, y >> 1) * w + Math.min(w - 1, x >> 1);
+        f.col.set(col.subarray(k * 3, k * 3 + 3), j * 3);
+      }
+    }
+  }
+  const out = new Float32Array(rgb);
+  for (let y = 0; y < base.h; y++) for (let x = 0; x < base.w; x++) {
+    const j = y * base.w + x; if (!base.fill[j]) continue;
+    const i = at(x0 + x, y0 + y);
+    out[i * 3] = base.col[j * 3]; out[i * 3 + 1] = base.col[j * 3 + 1]; out[i * 3 + 2] = base.col[j * 3 + 2];
+  }
+  console.log(`  completado ${label}: ${base.fill.reduce((s, v) => s + v, 0)} px`);
+  return out;
+}
+
 // ---------------------------------------------------------------- utilidades de salida
 async function saveRGBA(name, rgba, w, h) {
   await sharp(Buffer.from(rgba.buffer, rgba.byteOffset, rgba.byteLength), { raw: { width: w, height: h, channels: 4 } }).png({ compressionLevel: 9 }).toFile(path.join(OUT, name));
@@ -221,14 +403,15 @@ const leftOfSplit = polyMask([[1000, 700], ...legSplit, [1000, 810]]);
 
 const head = and(silhouette, rectMask(1090, 555, 1170, 614));
 const arm = and(silhouette, armPoly);
-const legs = and(silhouette, rectMask(1086, 711, 1170, 810));
+// Piernas: debajo de la chaqueta; por debajo de la etiqueta de la mochila incluye toda la bota.
+const legs = and(silhouette, or(rectMask(1086, 711, 1170, 810), rectMask(1060, 716, 1170, 810)));
 const backLeg = and(legs, leftOfSplit);
 const frontLeg = minus(legs, leftOfSplit);
 const torsoCore = minus(minus(minus(silhouette, head), arm), legs);
 const backpack = and(torsoCore, backpackPoly);
 const armHole = and(arm, rectMask(1100, 600, 1147, 720));
 
-// Placa limpia: se reconstruye solo el área del explorador ampliada 3 px.
+// Placa limpia: se reconstruye solo el área del explorador (más su borde) y la de los iconos.
 const cyan = where((r, g, b) => g > 150 && b > 150 && g > r + 40);
 const cyanNear = dilate(cyan, 4);
 const gearZone = rectMask(1292, 590, 1373, 669);
@@ -240,17 +423,30 @@ const gear = or(gearZone, gearStem), nodes = or(nodesZone, nodesStem);
 // Resplandor turquesa de los iconos y de la mochila: no debe copiarse como textura del fondo.
 const nearExplorer = dilate(silhouette, 10);
 const tealGlow = where((r, g, b, x, y) => ((x > 1250 && y > 330 && y < 720) || nearExplorer[at(x, y)]) && g > r + 12 && b > r + 12);
-// Incluye el halo de la pantalla de la mochila, que se mueve con el explorador.
-const exFill = or(dilate(silhouette, 3), minus(and(dilate(tealGlow, 1), nearExplorer), cyanNear));
-const forbidden = or(dilate(silhouette, 6), dilate(gear, 10), dilate(nodes, 10), summitZone, cyanNear, dilate(tealGlow, 3));
+// Borde real del explorador (2 px de antialias). El halo de la pantalla de la mochila no se
+// recorta como parte del personaje: se guarda como luz aditiva que viaja con la mochila.
+const exEdge = dilate(silhouette, 2);
+// Puntos de la ruta (se conservan); el cian de los propios iconos no cuenta como ruta.
+const routeNear = minus(cyanNear, dilate(or(gear, nodes), 3));
+// El halo solo rodea la pantalla de la mochila (el resto del cian cercano es vegetación teñida).
+const packScreen = rectMask(1062, 631, 1114, 681);
+const packHalo = minus(minus(and(dilate(tealGlow, 1), dilate(packScreen, 15)), exEdge), routeNear);
+const exFill = or(exEdge, packHalo);
+// Resplandor intenso de los iconos (el tinte tenue del terreno se conserva como luz ambiental).
+const strongGlow = where((r, g, b, x, y) => x > 1250 && y > 330 && y < 720 && g > r + 35 && b > r + 35);
+// Orígenes prohibidos: márgenes estrechos para no quedarse sin textura cerca de los huecos.
+const forbidden = or(dilate(silhouette, 4), dilate(gear, 3), dilate(nodes, 3), summitZone, dilate(cyan, 1), dilate(strongGlow, 1), dilate(packHalo, 1));
 
 console.log("placas:");
-let plate = inpaint(src, exFill, not(forbidden), { half: 4, radius: 60, label: "explorador" });
-// El halo que cada icono proyecta sobre el terreno desaparece con él (los puntos de la ruta se conservan).
-const haloOf = (m) => minus(and(dilate(tealGlow, 1), dilate(m, 12)), cyanNear);
-const gearFill = or(dilate(gear, 1), haloOf(gear)), nodesFill = or(dilate(nodes, 1), haloOf(nodes));
-plate = inpaint(plate, gearFill, not(forbidden), { half: 4, radius: 60, label: "engranaje" });
+// Iconos: el panel, su poste y el resplandor intenso alrededor (el tinte tenue del suelo queda
+// como luz ambiental). Primero se rellena por parches y luego se refina con PatchMatch a escala
+// completa, sin promediar, para que cada píxel venga del parche del entorno que mejor encaja.
+const gearFill = minus(or(dilate(gear, 2), and(dilate(strongGlow, 1), dilate(gear, 8))), routeNear);
+const nodesFill = minus(or(dilate(nodes, 2), and(dilate(strongGlow, 1), dilate(nodes, 8))), routeNear);
+let plate = inpaint(src, exFill, not(forbidden), { half: 4, radius: 60, label: "explorador" });plate = inpaint(plate, gearFill, not(forbidden), { half: 4, radius: 60, label: "engranaje" });
+plate = complete(plate, gearFill, not(forbidden), { half: 3, levels: 1, keepInit: true, window: 60, label: "engranaje", seed: 12 });
 plate = inpaint(plate, nodesFill, not(forbidden), { half: 4, radius: 60, label: "nodos" });
+plate = complete(plate, nodesFill, not(forbidden), { half: 3, levels: 1, keepInit: true, window: 60, label: "nodos", seed: 13 });
 
 // ---------------------------------------------------------------- nubes
 // Bancos de nubes del cielo superior. Solo se animan los que no tocan el horizonte.
@@ -299,9 +495,9 @@ for (let i = 0; i < N; i++) {
 }
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
   const i = at(x, y);
-  if (!(outerBand[i] || exFill[i]) || partLabel[i]) continue;
+  if (!outerBand[i] || partLabel[i]) continue;
   let best = 0, bd = 999;
-  for (let dy = -12; dy <= 12; dy++) for (let dx = -12; dx <= 12; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const l = partLabel[at(xx, yy)]; const d = dx * dx + dy * dy; if (l && silhouette[at(xx, yy)] && d < bd) { bd = d; best = l; } }
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const l = partLabel[at(xx, yy)]; const d = dx * dx + dy * dy; if (l && silhouette[at(xx, yy)] && d < bd) { bd = d; best = l; } }
   partLabel[i] = best;
 }
 // Alfa mínimo que reproduce exactamente el original sobre la placa (mate por diferencia).
@@ -313,7 +509,8 @@ const minAlpha = (i) => {
   }
   return Math.ceil(a * 255);
 };
-const alphaAt = (i) => inner[i] ? 255 : exFill[i] ? minAlpha(i) : 0;
+// Solo el borde de 2 px lleva alfa parcial: fuera de él no viaja ningún píxel del fondo.
+const alphaAt = (i) => inner[i] ? 255 : exEdge[i] ? minAlpha(i) : 0;
 // Color "despremultiplicado" contra la placa para que la composición reproduzca el original.
 const colorAt = (i, a) => {
   if (a >= 255 || a <= 0) return [src[i * 3], src[i * 3 + 1], src[i * 3 + 2], a];
@@ -340,6 +537,13 @@ for (const [name, id] of Object.entries(parts)) {
 {
   const m = and(backpack, inner);
   meta.explorer.parts.backpack = await saveSprite("explorer-backpack.png", bbox(m), (x, y) => { const i = at(x, y); return m[i] ? [src[i * 3], src[i * 3 + 1], src[i * 3 + 2], 255] : null; });
+  // Luz de la pantalla sobre el entorno: diferencia positiva con la placa, se suma con "lighter".
+  meta.explorer.glow = await saveSprite("explorer-glow.png", bbox(packHalo), (x, y) => {
+    const i = at(x, y);
+    if (!packHalo[i]) return null;
+    const d = [0, 1, 2].map(c => Math.max(0, src[i * 3 + c] - Math.round(plate[i * 3 + c])));
+    return Math.max(...d) > 0 ? [...d, 255] : null;
+  });
 }
 
 // ---------------------------------------------------------------- iconos

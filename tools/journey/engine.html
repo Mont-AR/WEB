@@ -353,6 +353,12 @@ function drawExplorer(ctx, st, ps, M) {
   drawPart(ctx, M.frontLeg, "frontLeg");
   drawPart(ctx, M.body, "torso");
   drawPart(ctx, M.pack, "backpack");
+  // luz de la pantalla de la mochila sobre el entorno: viaja con el explorador
+  const G = LAYERS.explorer.glow;
+  ctx.setTransform(M.pack);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.drawImage(img[G.file], G.x, G.y);
+  ctx.globalCompositeOperation = "source-over";
   // indicadores de herramientas obtenidas sobre la mochila
   ctx.setTransform(M.pack);
   for (let i = 0; i < st.indicators; i++) {
