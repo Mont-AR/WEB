@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { JourneyClouds } from "./journey-clouds";
 import { JourneyVideo } from "./journey-video";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
 import { content, heroContent } from "@/lib/content";
@@ -30,6 +31,8 @@ export function Journey() {
   // Video, textos y contador leen solo el cabezal.
   const targetRef=useRef(0);
   const timeRef=useRef(0);
+  // El trayecto en curso lo inició la navegación (más rápido que un gesto de scroll).
+  const navTripRef=useRef(false);
   const whatsapp=`https://wa.me/${content.contacto.whatsapp}?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto`;
 
   useEffect(()=>{
@@ -60,23 +63,28 @@ export function Journey() {
   // y frenado suaves), en ambos sentidos. La etapa cambia cuando el explorador toca cada hito.
   useEffect(()=>{
     if(reducedMotion) return;
-    let frame=0, last=performance.now(), speed=0, direction=0, cruise=0, tripTarget=NaN;
+    let frame=0, last=performance.now(), speed=0, direction=0, cruise=0, tripTarget=NaN, journey="";
     const tick=(now:number)=>{
       // tiempo real aunque el navegador pinte a menos cuadros (solo se limita tras una pausa larga)
       const dt=Math.min(.12,(now-last)/1000); last=now;
       const remaining=targetRef.current-timeRef.current, distance=Math.abs(remaining);
-      if(distance<1e-3){timeRef.current=targetRef.current;speed=0;direction=0;tripTarget=NaN;}
+      if(distance<1e-3){timeRef.current=targetRef.current;speed=0;direction=0;tripTarget=NaN;navTripRef.current=false;}
       else{
         const dir=Math.sign(remaining);
         if(dir!==direction){direction=dir;speed=0;}
         // velocidad de crucero fijada por trayecto: un salto largo dura como mucho maxTravel
-        if(targetRef.current!==tripTarget){tripTarget=targetRef.current;cruise=Math.max(JOURNEY.minSpeed,distance/JOURNEY.maxTravel);}
-        const desired=cruise*Math.min(1,.3+distance/.5);
-        speed+=Math.max(-6*dt,Math.min(6*dt,desired-speed));
+        const nav=navTripRef.current;
+        if(targetRef.current!==tripTarget){tripTarget=targetRef.current;cruise=nav?Math.max(JOURNEY.navMinSpeed,distance/JOURNEY.navMaxTravel):Math.max(JOURNEY.minSpeed,distance/JOURNEY.maxTravel);}
+        const desired=cruise*Math.min(1,.3+distance/(nav?.8:.5));
+        speed+=Math.max(-(nav?10:6)*dt,Math.min((nav?10:6)*dt,desired-speed));
         const step=speed*dt;
         timeRef.current=step>=distance?targetRef.current:timeRef.current+dir*step;
       }
-      setStage(stageAtTime(timeRef.current));      frame=requestAnimationFrame(tick);
+      setStage(stageAtTime(timeRef.current));
+      // avance del recorrido para el paralaje de las nubes
+      const next=(timeRef.current/JOURNEY.duration).toFixed(4);
+      if(next!==journey){journey=next;stageRef.current?.style.setProperty("--journey",next);}
+      frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
     return()=>cancelAnimationFrame(frame);
@@ -108,6 +116,7 @@ export function Journey() {
     const target=document.getElementById(`etapa-${index}`);
     if(!target)return;
     // El scroll llega al ancla; el cabezal recorre la animación desde el punto actual hasta allí.
+    navTripRef.current=true;
     window.scrollTo({top:target.getBoundingClientRect().top+window.scrollY,behavior:"instant"});
   };
 
@@ -160,6 +169,7 @@ export function Journey() {
       {STAGES.map((item,index)=><span key={item.id} id={`etapa-${index}`} className="stage-anchor" style={{top:`calc((100% - 100svh) * ${stageProgress(index)})`}} aria-hidden="true"/>)}
       <div className="fixed-stage" ref={stageRef} data-step={stage}>
         <JourneyVideo timeRef={timeRef} stage={stage}/>
+        <JourneyClouds/>
         <div className="scene-vignette" aria-hidden="true"/>
         {header}
         {panels.map((panel,index)=><div key={STAGES[index].id} className={`stage-layer ${stage===index?"is-active":""}`} inert={stage!==index} aria-hidden={stage!==index}>{panel}</div>)}

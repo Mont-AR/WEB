@@ -16,10 +16,13 @@ export const JOURNEY = {
   posters: [0, 1, 2, 3].map((index) => `/video/montar-journey-poster-${index}.webp`),
   // Cada etapa ocupa una pantalla de scroll; el scroll se ajusta (snap) a cada una.
   vhPerStage: 100,
-  // Reproducción entre etapas: velocidad mínima (s de animación por s real) y duración máxima
-  // de un salto largo, para que cruzar varias etapas desde la navegación no se haga eterno.
+  // Reproducción entre etapas con scroll: velocidad mínima (s de animación por s real) y
+  // duración máxima de un trayecto largo.
   minSpeed: 1.4,
   maxTravel: 3.6,
+  // Desde la navegación (barra inferior y botones) el recorrido es más ágil.
+  navMinSpeed: 2.6,
+  navMaxTravel: 2.2,
   // Encuadre horizontal en pantallas verticales: del inicio del sendero a la cima.
   panStart: 78,
   panEnd: 100,
