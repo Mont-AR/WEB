@@ -39,6 +39,10 @@ El HTML incluye la vista previa fotograma a fotograma, la exportación MP4 (WebC
 
 `content.json` es la fuente de los textos, las opciones del recorrido, la dirección de contacto y los metadatos de la página. Conserva la clave `seccions` del formato solicitado. El archivo `src/lib/content.ts` tipa las secciones para usarlas desde los componentes y el servidor.
 
+## Indexación
+
+`src/app/robots.ts` publica `/robots.txt` (permite todo salvo `/api/`) y `src/app/sitemap.ts` publica `/sitemap.xml` con la home. Los títulos, la descripción, las palabras clave, Open Graph y Twitter Card se generan en `src/app/layout.tsx` a partir de `seo` en `content.json`, junto con los datos estructurados schema.org (sitio, negocio y servicios) y la imagen `public/og/montar-og.jpg`. El origen canónico es `https://montivero.ar`; se puede cambiar con `SITE_URL` sin editar el contenido.
+
 ## Envío de correo
 
 La integración usa la [API de Resend](https://resend.com/docs/api-reference/emails/send-email). Para activarla:

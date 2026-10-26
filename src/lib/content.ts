@@ -58,6 +58,11 @@ type SiteContent = {
   dominio: string;
   contacto: { email: string; telefono: string; whatsapp: string };
   marca: { nombre: string; firma: string };
+  seo: {
+    titulo: string;
+    descripcion: string;
+    palabrasClave: string[];
+  };
   interfaz: {
     scroll: string;
     playhead: string;

@@ -9,6 +9,22 @@
     "nombre": "MONT.AR",
     "firma": "Fabricio Montivero · AR"
   },
+  "seo": {
+    "titulo": "MONT.AR — Webs, sistemas y automatizaciones a medida",
+    "descripcion": "Desarrollo webs, sistemas de gestión, automatizaciones y bots a medida. WordPress, Google Workspace e integraciones. Fabricio Montivero · Argentina.",
+    "palabrasClave": [
+      "desarrollo web",
+      "diseño web",
+      "sistemas de gestión",
+      "automatización",
+      "bots",
+      "WordPress",
+      "Google Workspace",
+      "Fabricio Montivero",
+      "Mont.AR",
+      "Argentina"
+    ]
+  },
   "interfaz": {
     "scroll": "Scroll para avanzar",
     "playhead": "Scroll = playhead",
