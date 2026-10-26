@@ -1,8 +1,8 @@
 import timeline from "./journey-timeline.json";
 import { heroContent, projectContent, servicesContent, startingContent } from "./content";
 
-// Única configuración del recorrido. Los tiempos provienen de la misma línea de tiempo con la
-// que se renderizó el video (tools/journey), así que no se duplican en los componentes.
+// Única configuración del recorrido. Los tiempos provienen de la misma línea de tiempo que usa el
+// motor del render (src/lib/journey-engine.js), así que no se duplican en los componentes.
 const milestone = (id: string) => {
   const m = timeline.milestones.find((item) => item.id === id);
   if (!m) throw new Error(`Hito desconocido: ${id}`);
@@ -11,8 +11,9 @@ const milestone = (id: string) => {
 
 export const JOURNEY = {
   duration: timeline.duration,
-  fps: 30, // cadencia del video web (el máster de 60 fps queda en out/)
-  video: "/video/montar-journey.mp4",
+  // capas de la ilustración que el motor compone en vivo (tools/journey/publish-layers.mjs)
+  layers: "/journey",
+  // fotogramas fijos de cada etapa: carga inicial y lectura con movimiento reducido
   posters: [0, 1, 2, 3].map((index) => `/video/montar-journey-poster-${index}.webp`),
   // Cada etapa ocupa una pantalla de scroll; el scroll se ajusta (snap) a cada una.
   vhPerStage: 100,

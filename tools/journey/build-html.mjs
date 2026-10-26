@@ -16,7 +16,11 @@ const images = {};
 for (const f of files) images[f] = `data:image/png;base64,${(await fs.readFile(path.join(ROOT, "layers", f))).toString("base64")}`;
 
 const template = await fs.readFile(path.join(ROOT, "engine.html"), "utf8");
-const html = template.replace("/*__ASSETS__*/", () => JSON.stringify({ timeline, layers, images }));
+// el núcleo del motor es el mismo módulo que renderiza la web; se incrusta sin el `export`
+const engine = (await fs.readFile(path.join(PROJECT, "src", "lib", "journey-engine.js"), "utf8")).replace(/^export /m, "");
+const html = template
+  .replace("/*__ASSETS__*/", () => JSON.stringify({ timeline, layers, images }))
+  .replace("/*__ENGINE__*/", () => engine);
 await fs.mkdir(path.join(PROJECT, "out"), { recursive: true });
 const target = path.join(PROJECT, "out", "montar-explorer-journey.html");
 await fs.writeFile(target, html);

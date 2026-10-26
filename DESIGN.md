@@ -12,7 +12,7 @@ Paleta de efectos nuevos, tomada de la referencia: cian `#61f7e7`, cian claro `#
 
 ## Página
 
-El texto vive en HTML sobre el video; la sección se fija con `position: sticky` y el scroll determina el fotograma y la etapa activa (Home, Servicios, Necesidad, Proyecto). Las etapas cambian con un fundido breve y reversible; el contador inferior también sirve de navegación. Seleccionar un servicio o punto de partida lo precarga en el formulario, y el botón principal lleva a la última etapa. El formulario envía los datos a una ruta de Next.js que entrega el correo mediante Resend. En pantallas verticales el encuadre del video acompaña al explorador. Con `prefers-reduced-motion` la página se lee en cuatro secciones sucesivas con un fotograma fijo de cada etapa.
+El texto vive en HTML sobre el render en vivo (2.5D: el fotograma del motor sobre un plano con relieve y cámara con paralaje); la sección se fija con `position: sticky` y el scroll determina el fotograma y la etapa activa (Home, Servicios, Necesidad, Proyecto). Las etapas cambian con un fundido breve y reversible; el contador inferior también sirve de navegación. Seleccionar un servicio o punto de partida lo precarga en el formulario, y el botón principal lleva a la última etapa. El formulario envía los datos a una ruta de Next.js que entrega el correo mediante Resend. En pantallas verticales la cámara acompaña al explorador. Con `prefers-reduced-motion` la página se lee en cuatro secciones sucesivas con un fotograma fijo de cada etapa.
 
 Los textos visibles, las opciones y los datos públicos de contacto se editan desde `content.json`. La clave de Resend y el remitente se configuran como variables del servidor.
 

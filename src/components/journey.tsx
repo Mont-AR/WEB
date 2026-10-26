@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { JourneyClouds } from "./journey-clouds";
-import { JourneyVideo } from "./journey-video";
+import { JourneyRender } from "./journey-render";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
 import { content, heroContent } from "@/lib/content";
 import { JOURNEY, STAGES, formatStage, stageAtTime, stageProgress, targetAtProgress, trackHeight } from "@/lib/journey-config";
@@ -28,7 +28,7 @@ export function Journey() {
   const trackRef=useRef<HTMLDivElement>(null);
   const stageRef=useRef<HTMLDivElement>(null);
   // El scroll fija el destino; el cabezal (timeRef) avanza hacia él reproduciendo la animación.
-  // Video, textos y contador leen solo el cabezal.
+  // Render, textos y contador leen solo el cabezal.
   const targetRef=useRef(0);
   const timeRef=useRef(0);
   // El trayecto en curso lo inició la navegación (más rápido que un gesto de scroll).
@@ -168,7 +168,7 @@ export function Journey() {
     <div className="journey-track" ref={trackRef} style={{height:trackHeight}}>
       {STAGES.map((item,index)=><span key={item.id} id={`etapa-${index}`} className="stage-anchor" style={{top:`calc((100% - 100svh) * ${stageProgress(index)})`}} aria-hidden="true"/>)}
       <div className="fixed-stage" ref={stageRef} data-step={stage}>
-        <JourneyVideo timeRef={timeRef} stage={stage}/>
+        <JourneyRender timeRef={timeRef} stage={stage}/>
         <JourneyClouds/>
         <div className="scene-vignette" aria-hidden="true"/>
         {header}

@@ -11,7 +11,7 @@ button{cursor:pointer}
 .journey-track{position:relative}
 .stage-anchor{position:absolute;left:0;width:1px;height:1px;pointer-events:none;scroll-snap-align:start;scroll-snap-stop:always}
 .fixed-stage{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate;background:#120d50}
-.journey-video{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:70% 50%;background:#120d50 center/cover;pointer-events:none}
+.journey-render{position:absolute;inset:0;width:100%;height:100%;display:block;background:#120d50 70% 50%/cover no-repeat;pointer-events:none}
 .cloud-layer{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .cloud-parallax{position:absolute;transform:translateX(calc(var(--journey,0) * var(--depth)));will-change:transform}
 .cloud-parallax-left{--depth:-70px;left:-5%;top:1%;width:43%;height:29%}
@@ -107,4 +107,4 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.copy-panel,.milestone,.milestone-label,.hero-button,.stage-layer{transition:none}.scroll-cue .arrow{animation:none}}
 @media(prefers-reduced-motion:reduce){.copy-panel.is-visible,.cloud-asset{animation:none}}
 @media(prefers-reduced-motion:reduce){.loader-sun,.loader-traveler,.loader-dots{animation:none}}
-@media(max-aspect-ratio:1/1){.cloud-parallax-left{left:-30%;width:90%;height:22%}.cloud-parallax-middle{display:none}.cloud-parallax-right{left:35%;width:95%;height:24%}.journey-video{object-position:var(--pan,78%) 50%}.sequence-section{background-position:var(--pan,78%) 50%}}
+@media(max-aspect-ratio:1/1){.cloud-parallax-left{left:-30%;width:90%;height:22%}.cloud-parallax-middle{display:none}.cloud-parallax-right{left:35%;width:95%;height:24%}.journey-render:not(.is-ready){background-position:78% 50%}.sequence-section{background-position:var(--pan,78%) 50%}}
