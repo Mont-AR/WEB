@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { JourneyClouds } from "./journey-clouds";
 import { JourneyRender } from "./journey-render";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
 import { content, heroContent } from "@/lib/content";
@@ -60,10 +59,11 @@ export function Journey() {
   },[reducedMotion]);
 
   // Cabezal: recorre la animación hasta el destino a velocidad de reproducción (con aceleración
-  // y frenado suaves), en ambos sentidos. La etapa cambia cuando el explorador toca cada hito.
+  // y frenado suaves), en ambos sentidos. La etapa (paneles y contador) sigue al destino, no al
+  // cabezal: el texto cambia apenas se elige la etapa, aunque el explorador todavía esté en camino.
   useEffect(()=>{
     if(reducedMotion) return;
-    let frame=0, last=performance.now(), speed=0, direction=0, cruise=0, tripTarget=NaN, journey="";
+    let frame=0, last=performance.now(), speed=0, direction=0, cruise=0, tripTarget=NaN;
     const tick=(now:number)=>{
       // tiempo real aunque el navegador pinte a menos cuadros (solo se limita tras una pausa larga)
       const dt=Math.min(.12,(now-last)/1000); last=now;
@@ -80,10 +80,7 @@ export function Journey() {
         const step=speed*dt;
         timeRef.current=step>=distance?targetRef.current:timeRef.current+dir*step;
       }
-      setStage(stageAtTime(timeRef.current));
-      // avance del recorrido para el paralaje de las nubes
-      const next=(timeRef.current/JOURNEY.duration).toFixed(4);
-      if(next!==journey){journey=next;stageRef.current?.style.setProperty("--journey",next);}
+      setStage(stageAtTime(targetRef.current));
       frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
@@ -169,7 +166,6 @@ export function Journey() {
       {STAGES.map((item,index)=><span key={item.id} id={`etapa-${index}`} className="stage-anchor" style={{top:`calc((100% - 100svh) * ${stageProgress(index)})`}} aria-hidden="true"/>)}
       <div className="fixed-stage" ref={stageRef} data-step={stage}>
         <JourneyRender timeRef={timeRef} stage={stage}/>
-        <JourneyClouds/>
         <div className="scene-vignette" aria-hidden="true"/>
         {header}
         {panels.map((panel,index)=><div key={STAGES[index].id} className={`stage-layer ${stage===index?"is-active":""}`} inert={stage!==index} aria-hidden={stage!==index}>{panel}</div>)}

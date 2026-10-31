@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import * as THREE from "three";
-import { createJourneyEngine } from "@/lib/journey-engine";
-import { buildDepthMap } from "@/lib/journey-depth";
 import { JOURNEY } from "@/lib/journey-config";
 import timeline from "@/lib/journey-timeline.json";
 
@@ -18,12 +15,16 @@ type Props = {
 // luces y cielo) sobre la ilustración, y ese fotograma se apoya en un plano con relieve según un mapa
 // de profundidad. La cámara se acerca al explorador a lo largo del recorrido y responde al puntero,
 // así que el paisaje 2D gana paralaje real. Sin WebGL se dibuja el fotograma plano en un canvas 2D.
+// Three.js y el motor se cargan aparte para no sumarlos al primer pintado (mientras, se ve el póster).
 const PLANE_H = 2;
 const FOV = 30;
 const Z0 = PLANE_H / 2 / Math.tan((FOV / 2) * Math.PI / 180);
 const RELIEF = .9;      // profundidad máxima del relieve (unidades de escena)
 const OVERSCAN = .9;    // margen para que el movimiento de cámara no muestre los bordes
 const DOLLY = .32;      // acercamiento de la cámara del inicio a la cima
+// margen al borde del plano para que el balanceo y el paralaje no muestren el fondo (en pantallas
+// verticales el encuadre llega al borde derecho en la cima; arriba y abajo alcanza con menos)
+const EDGE_X = .1, EDGE_Y = .04;
 
 const vertexShader = /* glsl */ `
   uniform sampler2D uDepth;
@@ -66,8 +67,18 @@ export function JourneyRender({ timeRef, stage }: Props) {
     let cancelled = false;
     let frame = 0;
     let cleanup = () => {};
+    // fuera de pantalla no se dibuja nada; al volver se retoma el loop
+    let visible = true;
+    let loop: ((now: number) => void) | null = null;
+    const resume = () => { if (loop && visible && !frame) frame = requestAnimationFrame(loop); };
+    const visibility = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; resume(); });
+    visibility.observe(canvas);
 
     (async () => {
+      const [THREE, { createJourneyEngine }, { buildDepthMap }] = await Promise.all([
+        import("three"), import("@/lib/journey-engine"), import("@/lib/journey-depth"),
+      ]);
+      if (cancelled) return;
       const layers = await fetch(`${JOURNEY.layers}/layers.json`).then((r) => r.json());
       const images = Object.fromEntries((layers.files as string[]).map((f) => [f, `${JOURNEY.layers}/${f}`]));
       const engine = createJourneyEngine({ timeline, layers, images });
@@ -75,7 +86,7 @@ export function JourneyRender({ timeRef, stage }: Props) {
       if (cancelled) return;
       const work = engine.renderTime(timeRef.current ?? 0);
 
-      let renderer: THREE.WebGLRenderer | null = null;
+      let renderer: InstanceType<typeof THREE.WebGLRenderer> | null = null;
       try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" }); }
       catch { renderer = null; }
 
@@ -84,6 +95,8 @@ export function JourneyRender({ timeRef, stage }: Props) {
         const ctx = canvas.getContext("2d")!;
         let last = NaN;
         const draw = () => {
+          frame = 0;
+          if (!visible) return;
           const t = timeRef.current ?? 0;
           const w = canvas.clientWidth, h = canvas.clientHeight;
           if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; last = NaN; }
@@ -95,6 +108,7 @@ export function JourneyRender({ timeRef, stage }: Props) {
           }
           frame = requestAnimationFrame(draw);
         };
+        loop = draw;
         draw();
         setReady(true);
         return;
@@ -147,7 +161,8 @@ export function JourneyRender({ timeRef, stage }: Props) {
       let width = 0, height = 0, lastT = NaN;
       const resize = () => {
         width = canvas.clientWidth; height = canvas.clientHeight;
-        renderer!.setPixelRatio(Math.min(devicePixelRatio, 2));
+        // en pantallas chicas se limita la densidad: el relieve se redibuja en cada cuadro
+        renderer!.setPixelRatio(Math.min(devicePixelRatio, Math.min(width, height) < 700 ? 1.5 : 2));
         renderer!.setSize(width, height, false);
         camera.aspect = width / height;
         // encuadre "cover": se ve toda la altura o todo el ancho, con margen para el movimiento
@@ -161,6 +176,8 @@ export function JourneyRender({ timeRef, stage }: Props) {
 
       const start = performance.now();
       const tick = (now: number) => {
+        frame = 0;
+        if (!visible) return;
         const t = timeRef.current ?? 0;
         if (t !== lastT) { lastT = t; engine.renderTime(t); map.needsUpdate = true; }
         const k = smoothstep(Math.min(1, t / JOURNEY.duration));
@@ -173,7 +190,7 @@ export function JourneyRender({ timeRef, stage }: Props) {
         const dolly = (narrow ? DOLLY * .35 : DOLLY) * k;
         const visH = 2 * (Z0 - dolly) * Math.tan(camera.fov * Math.PI / 360);
         const visW = visH * camera.aspect;
-        const maxX = Math.max(0, (planeW - visW) / 2), maxY = Math.max(0, (PLANE_H - visH) / 2);
+        const maxX = Math.max(0, (planeW - visW) / 2 - EDGE_X), maxY = Math.max(0, (PLANE_H - visH) / 2 - EDGE_Y);
         const pan = narrow ? (JOURNEY.panStart + (JOURNEY.panEnd - JOURNEY.panStart) * k) / 100 : .7;
         const ex = engine.explorerAt(t);
         const exX = (ex.x / layers.width - .5) * planeW, exY = (.5 - ex.y / layers.height) * PLANE_H;
@@ -202,7 +219,8 @@ export function JourneyRender({ timeRef, stage }: Props) {
         renderer!.render(scene, camera);
         frame = requestAnimationFrame(tick);
       };
-      frame = requestAnimationFrame(tick);
+      loop = tick;
+      resume();
       setReady(true);
 
       cleanup = () => {
@@ -215,6 +233,7 @@ export function JourneyRender({ timeRef, stage }: Props) {
 
     return () => {
       cancelled = true;
+      visibility.disconnect();
       cancelAnimationFrame(frame);
       cleanup();
     };
