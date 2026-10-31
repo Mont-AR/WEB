@@ -34,6 +34,13 @@ export function HomeScroll() {
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let steps: Step[] = [], snaps: number[] = [], total = 0, frame = 0, x = -1;
     let auto = 0, quietUntil = 0, lastY = window.scrollY, dir = 1;
+    // alto estable de la pantalla (lvh, con las barras del navegador escondidas): en mobile las barras
+    // aparecen y desaparecen al scrollear y no deben cambiar la longitud de los tramos
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;top:0;left:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none";
+    document.body.appendChild(probe);
+    const stableVh = () => probe.offsetHeight || window.innerHeight;
+    let sizeKey = "";
     const leftIn = (el: HTMLElement) => { let l = 0; for (let e: HTMLElement | null = el; e && e !== track; e = e.offsetParent as HTMLElement | null) l += e.offsetLeft; return l; };
 
     const set = (el: HTMLElement, value: number) => {
@@ -43,7 +50,8 @@ export function HomeScroll() {
 
     const measure = () => {
       home.classList.add("is-rail");
-      const vw = stage.clientWidth, vh = window.innerHeight, wide = window.matchMedia("(min-width: 1001px)").matches;
+      const vw = stage.clientWidth, vh = stableVh(), wide = window.matchMedia("(min-width: 1001px)").matches;
+      sizeKey = `${vw}x${vh}`;
       home.style.setProperty("--vw", `${vw}px`);
       const maxX = Math.max(0, track.scrollWidth - vw);
       steps = []; let y = 0;
@@ -153,6 +161,8 @@ export function HomeScroll() {
     };
     const onStageScroll = () => { if (stage.scrollLeft) stage.scrollLeft = 0; };
     const relayout = () => { measure(); update(); };
+    // solo si cambió el ancho o el alto estable (rotar, redimensionar), no por las barras del navegador
+    const onResize = () => { if (`${stage.clientWidth}x${stableVh()}` !== sizeKey) relayout(); else request(); };
 
     relayout();
     if (location.hash) { stage.scrollLeft = 0; goToHash(location.hash, false); }
@@ -160,7 +170,7 @@ export function HomeScroll() {
     const resize = new ResizeObserver(relayout);
     resize.observe(track);
     window.addEventListener("scroll", request, { passive: true });
-    window.addEventListener("resize", relayout);
+    window.addEventListener("resize", onResize);
     track.addEventListener("focusin", onFocus);
     stage.addEventListener("scroll", onStageScroll);
     home.addEventListener("click", onClick);
@@ -178,7 +188,8 @@ export function HomeScroll() {
       cancelAnimationFrame(frame);
       resize.disconnect();
       window.removeEventListener("scroll", request);
-      window.removeEventListener("resize", relayout);
+      window.removeEventListener("resize", onResize);
+      probe.remove();
       home.classList.remove("is-rail");
     };
   }, []);

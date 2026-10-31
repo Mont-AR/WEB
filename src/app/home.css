@@ -51,7 +51,9 @@
    Sin JS la pista se recorre con scroll horizontal nativo; con JS (.is-rail) el escenario queda fijo y
    el scroll vertical la mueve. Cada pantalla mide lo que la vista (--vw, sin la barra de scroll). */
 .home-rail{position:relative}
-.home-stage{position:relative;height:100svh;overflow-x:auto;overflow-y:hidden}
+/* alto de la pantalla con las barras del navegador escondidas (lvh): al scrollear en mobile el navegador
+   las esconde y la pantalla crece; así el paisaje siempre la cubre entera */
+.home-stage{position:relative;height:100vh;height:100lvh;overflow-x:auto;overflow-y:hidden}
 .home.is-rail .home-stage{position:sticky;top:0;overflow:hidden}
 .home-backdrop{position:absolute;inset:0;pointer-events:none}
 .home-hero-scene{position:absolute;inset:0;overflow:hidden;background:#071139}
