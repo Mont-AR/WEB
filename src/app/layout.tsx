@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource/press-start-2p/400.css";
 import "./globals.css";
+import { SiteCursor } from "@/components/site-cursor";
 import { content } from "@/lib/content";
 import { siteDescription, siteName, siteTitle, siteUrl, ogImage } from "@/lib/site";
 import { structuredData } from "@/lib/structured-data";
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es-AR">
       <body>
         {children}
+        <SiteCursor/>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       </body>
     </html>

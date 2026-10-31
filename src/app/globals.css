@@ -98,3 +98,13 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.copy-panel.is-visible{animation:none}}
 @media(prefers-reduced-motion:reduce){.loader-sun,.loader-traveler,.loader-dots{animation:none}}
 @media(max-aspect-ratio:1/1){.journey-render:not(.is-ready){background-position:78% 50%}.sequence-section{background-position:var(--pan,78%) 50%}}
+/* puntero animado de todo el sitio (site-cursor.tsx): solo con mouse; en campos de texto, el del sistema */
+.has-cursor,.has-cursor *{cursor:none!important}
+.has-cursor :is(input:not([type=checkbox],[type=radio],[type=submit],[type=button]),textarea,[contenteditable]){cursor:text!important}
+.site-cursor{position:fixed;z-index:2147483647;top:0;left:0;pointer-events:none;opacity:0;will-change:transform}
+.site-cursor[data-visible]{opacity:1}
+.site-cursor[data-kind=text]{opacity:0}
+.site-cursor svg{position:absolute;top:0;left:0;display:none;filter:drop-shadow(2px 2px 0 rgba(3,4,31,.55))}
+.site-cursor:not([data-kind]) .cursor-arrow,.site-cursor[data-kind=arrow] .cursor-arrow,.site-cursor[data-kind=info] .cursor-info{display:block}
+.site-cursor[data-kind=link] .cursor-hand{display:block;left:-9px}
+.cursor-bit{position:fixed;z-index:2147483646;top:0;left:0;width:4px;height:4px;pointer-events:none;opacity:0}

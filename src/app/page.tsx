@@ -1,5 +1,6 @@
-import { Journey } from "@/components/journey";
+import { Home } from "@/components/home";
+import "./home.css";
 
-export default function Home() {
-  return <Journey />;
+export default function Page() {
+  return <Home />;
 }

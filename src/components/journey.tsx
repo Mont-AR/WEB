@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { JourneyRender } from "./journey-render";
 import { ProjectPanel, ServicesPanel, StartingPanel } from "./journey-panels";
-import { content, heroContent } from "@/lib/content";
+import { content, heroContent, whatsappUrl } from "@/lib/content";
 import { JOURNEY, STAGES, formatStage, stageAtTime, stageProgress, targetAtProgress, trackHeight } from "@/lib/journey-config";
 
 function Icon({kind}: {kind:number}) {
@@ -32,7 +33,6 @@ export function Journey() {
   const timeRef=useRef(0);
   // El trayecto en curso lo inició la navegación (más rápido que un gesto de scroll).
   const navTripRef=useRef(false);
-  const whatsapp=`https://wa.me/${content.contacto.whatsapp}?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto`;
 
   useEffect(()=>{
     const media=window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -124,14 +124,14 @@ export function Journey() {
       <p className="hero-subhead">{heroContent.subtitle}</p>
       <p className="hero-description">{heroContent.description}</p>
       <button className="hero-button" type="button" onClick={()=>goTo(3)}>{heroContent.action} <Arrow/></button>
-      <div className="hero-meta"><p className="signature">{content.marca.firma}</p><a href={whatsapp} target="_blank" rel="noopener noreferrer" className="whatsapp-link">{content.interfaz.whatsapp} <Arrow diagonal/></a></div>
+      <div className="hero-meta"><p className="signature">{content.marca.firma}</p><a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="whatsapp-link">{content.interfaz.whatsapp} <Arrow diagonal/></a></div>
     </div>,
     <ServicesPanel key="servicios" kicker={`${formatStage(1)} — ${STAGES[1].label}`} selected={service} onChoose={(value)=>{setService(value);goTo(2);}}/>,
     <StartingPanel key="necesidad" kicker={`${formatStage(2)} — ${STAGES[2].label}`} selected={startingPoint} onChoose={(value)=>{setStartingPoint(value);goTo(3);}}/>,
     <ProjectPanel key="proyecto" kicker={`${formatStage(3)} — ${STAGES[3].label}`} service={service} startingPoint={startingPoint} onServiceChange={setService} onStartingPointChange={setStartingPoint}/>,
   ];
 
-  const header=<header className="site-header"><a href="#etapa-0" onClick={(event)=>{event.preventDefault();goTo(0);}} className="brand" aria-label={`${content.marca.nombre}, volver al inicio`}>{content.marca.nombre.split(".")[0]}<span>{content.marca.nombre.split(".")[1]}</span></a></header>;
+  const header=<header className="site-header"><Link href="/" className="brand" aria-label={`${content.marca.nombre}, ir al inicio`}>{content.marca.nombre.split(".")[0]}<span>{content.marca.nombre.split(".")[1]}</span></Link></header>;
 
   const footer=<>
     <div className="journey-footer">

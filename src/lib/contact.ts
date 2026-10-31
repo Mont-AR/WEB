@@ -1,4 +1,4 @@
-import { projectContent, serviceLabel, servicesContent, startingContent } from "./content";
+import { projectContent, serviceLabel, servicesContent, startingContent, startingLabel } from "./content";
 
 export type ContactSubmission = {
   contactMethod: "email" | "telefono";
@@ -38,7 +38,7 @@ export function formatProjectEmail(submission: ContactSubmission): string {
     `${form.contactMethod}: ${submission.contactMethod === "email" ? form.email : form.phone}`,
     `Dato de contacto: ${submission.contactValue}`,
     `${form.service}: ${serviceLabel(submission.service)}`,
-    `${form.startingPoint}: ${submission.startingPoint}`,
+    `${form.startingPoint}: ${startingLabel(submission.startingPoint)}`,
     "",
     `${form.description}:`,
     submission.description,

@@ -1,0 +1,243 @@
+/* Inicio: pantallas en horizontal, como niveles de un jueguito, sobre el paisaje dibujado a mano.
+   El scroll vertical mueve la pista (home-scroll.tsx); cada escena recibe su progreso en --p (0–1) y
+   de él salen sus movimientos; sin JS o con movimiento reducido todo queda visible y en su lugar. Paleta, tipografía (Press Start 2P y monoespaciada) y botones 8-bit de la
+   web y de su hermana Nube Voladora. */
+.home{
+  --gutter:clamp(20px,4.3vw,76px);
+  --night:#070b39;--night-2:#120d50;--cream:#fff6d9;--dim:#2e2a72;--muted:#d9d2ec;
+  --cyan:#61f7e7;--mint:#e8fffb;--peach:#ffb77e;--pink:#e42a9b;--rose:#ed7e93;--violet:#43105f;--gold:#fff1b0;
+  --pixel:"Press Start 2P",monospace;
+  --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --shadow:4px 4px 0 #43105f,7px 8px 0 #0d0a3d;
+  background:var(--night);color:var(--cream);font-family:var(--mono)
+}
+.home h1,.home h2,.home h3{text-wrap:balance}
+
+/* ---------------------------------------------------------------- piezas comunes */
+.home-display{margin:0;font-family:var(--pixel);font-weight:400;line-height:1.25;letter-spacing:-.02em;text-transform:uppercase;text-shadow:var(--shadow)}
+.home-display-md{font-size:clamp(20px,3.4vw,56px)}
+.home-line{display:block}
+.home-note{margin:0;font-family:var(--pixel);font-size:clamp(7px,.62vw,10px);line-height:1.8;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+.home-lead{margin:0;max-width:46ch;font-size:clamp(15px,1.1vw,18px);line-height:1.5;color:var(--muted)}
+.home-caps{margin:0;max-width:48ch;font-size:clamp(14px,1vw,16px);line-height:1.55;color:var(--muted)}
+/* botón 8-bit (igual que Nube Voladora): esquinas en escalón, sombra dura y "presión" al pasar el mouse */
+.home-button{--bg:var(--cyan);--fg:#09234a;--bc:var(--mint);--sh:#073f6d;position:relative;display:inline-flex;align-items:center;gap:.8rem;margin:3px 7px 7px 3px;padding:1rem 1.4rem;background:var(--bg);color:var(--fg);font-family:var(--pixel);font-size:clamp(9px,.75vw,12px);line-height:1.4;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;box-shadow:0 -3px 0 0 var(--bc),0 3px 0 0 var(--bc),-3px 0 0 0 var(--bc),3px 0 0 0 var(--bc),inset 3px 3px 0 0 rgba(255,255,255,.35),inset -3px -3px 0 0 rgba(7,17,57,.35);filter:drop-shadow(4px 4px 0 var(--sh));transition:transform .12s steps(2),filter .12s steps(2)}
+.home-button:hover{transform:translate(2px,2px);filter:drop-shadow(2px 2px 0 var(--sh))}
+.home-button:active{transform:translate(4px,4px);filter:drop-shadow(0 0 0 var(--sh))}
+.home-button:focus-visible{outline:3px dashed var(--gold);outline-offset:6px}
+.home-button:hover::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.14) 0 2px,transparent 2px 4px);animation:button-flicker .5s steps(2) infinite}
+@keyframes button-flicker{50%{opacity:.3}}
+.home-button .arrow{width:16px;height:16px;flex:none}
+.home-button-small{padding:.8rem 1rem;font-size:clamp(8px,.62vw,10px)}
+.home-button-small .arrow{width:12px;height:12px}
+
+/* ---------------------------------------------------------------- carga: el loader de /contact (globals.css) hasta que
+   el paisaje está listo; mientras tanto el tipeo del hero espera */
+.home-loader{font-family:var(--pixel);transition:opacity .45s steps(5),visibility 0s .45s}
+.home[data-ready] .home-loader{opacity:0;visibility:hidden}
+.home:not([data-ready]) .home-type,.home:not([data-ready]) .home-type::after{animation-play-state:paused}
+
+/* ---------------------------------------------------------------- header */
+.home-header{position:fixed;z-index:20;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:calc(clamp(22px,3vw,48px) + env(safe-area-inset-top,0px)) clamp(24px,4.3vw,76px) clamp(22px,3vw,48px);pointer-events:none}
+.home-header>*{pointer-events:auto}
+/* la marca usa .brand de globals.css, igual que en /contact (con su tipografía pixel) */
+.home .brand{font-family:var(--pixel);line-height:normal}
+/* mismo padding que .site-header y el botón con márgenes negativos: la fila mide lo que la marca, así
+   que la marca queda a la misma altura que en /contact */
+.home-header .home-button{margin-block:-2rem}
+/* WhatsApp, fijo abajo a la derecha (donde iría un footer) */
+.home-dock{position:fixed;z-index:20;right:clamp(24px,4.3vw,76px);bottom:calc(clamp(18px,2.4vw,36px) + env(safe-area-inset-bottom,0px));margin:0}
+
+/* ---------------------------------------------------------------- riel horizontal (home-scroll.tsx)
+   Sin JS la pista se recorre con scroll horizontal nativo; con JS (.is-rail) el escenario queda fijo y
+   el scroll vertical la mueve. Cada pantalla mide lo que la vista (--vw, sin la barra de scroll). */
+.home-rail{position:relative}
+.home-stage{position:relative;height:100svh;overflow-x:auto;overflow-y:hidden}
+.home.is-rail .home-stage{position:sticky;top:0;overflow:hidden}
+.home-backdrop{position:absolute;inset:0;pointer-events:none}
+.home-hero-scene{position:absolute;inset:0;overflow:hidden;background:#071139}
+/* fuera del hero el paisaje queda de fondo, oscurecido para leer */
+.home-scrim{position:absolute;inset:0;background:var(--night);opacity:clamp(0,calc(var(--xr,0) * .9),.62)}
+.home-track{position:relative;z-index:1;display:flex;width:max-content;height:100%;will-change:transform}
+.home-screen,.home-panel{position:relative;flex:none;box-sizing:border-box;width:var(--vw,100vw);height:100%}
+.home-pin{position:relative;height:100%;overflow:hidden}
+/* secciones de varias pantallas: un panel de título y uno por elemento */
+.home-projects,.home-process,.home-about{display:flex;width:auto}
+.home-section-head{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:22px;width:min(var(--vw,100vw),720px);padding:120px var(--gutter) 60px}
+
+/* ---------------------------------------------------------------- hero: atardecer dibujado a mano (hero-sunset.js) */
+.home-hero-shade{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 52% 40% at 50% 47%,rgba(7,11,57,.5),transparent 75%)}
+.home-hero-copy{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,2.6vh,30px);padding:0 var(--gutter);text-align:center}
+.home-hero-copy h1{font-size:min(6.6vw,12vh);line-height:1.2}
+.home-hero-sub{margin:0;font-family:var(--pixel);font-size:clamp(10px,1.5vw,24px);line-height:1.45;color:#2af3ef;text-shadow:3px 4px 0 #063d7d}
+/* tipeo del hero (home.tsx): cada letra aparece en su --d (ms) y un cursor de bloque la sigue
+   durante --s; el último queda titilando */
+.home-type{position:relative;visibility:hidden;animation:home-type-in 1ms calc(var(--d) * 1ms) forwards}
+.home-type::after{content:"";position:absolute;left:100%;top:.08em;bottom:.08em;width:.62em;margin-left:.06em;background:currentColor;opacity:0;animation:home-caret calc(var(--s) * 1ms) steps(1) calc(var(--d) * 1ms)}
+.home-type-end::after{animation:home-caret-blink 1s steps(1) calc(var(--d) * 1ms) infinite}
+@keyframes home-type-in{to{visibility:visible}}
+@keyframes home-caret{0%,100%{opacity:1}}
+@keyframes home-caret-blink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+/* aviso de scroll: la línea avanza hacia la derecha, como la vista */
+.home-scroll-cue{position:absolute;left:50%;bottom:28px;display:flex;align-items:center;gap:14px;margin:0;transform:translateX(-50%);font-family:var(--pixel);font-size:8px;letter-spacing:.06em;white-space:nowrap;text-transform:uppercase;color:var(--muted);opacity:calc(1 - var(--xr,0) * 8)}
+.home-scroll-cue i{width:48px;height:1px;background:linear-gradient(90deg,var(--cream),transparent);transform-origin:left;animation:cue-line 1.8s ease-in-out infinite}
+@keyframes cue-line{0%{transform:scaleX(0)}50%{transform:scaleX(1);transform-origin:left}51%{transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
+
+/* ---------------------------------------------------------------- frase que se entinta letra por letra */
+.home-story-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px var(--gutter);text-align:center}
+.home-reveal-text{max-width:min(1200px,88vw);margin:0;font-family:var(--pixel);font-size:clamp(14px,min(2.3vw,5.2vh),40px);line-height:1.6;text-transform:uppercase}
+.home-word{display:inline-block;white-space:nowrap}
+.home-char{position:relative;display:inline-block;color:var(--dim)}
+.home-char::after{content:attr(data-c);position:absolute;top:0;left:0;color:var(--cream);opacity:clamp(0,calc(var(--rp,var(--p,0)) * var(--n) * 1.3 - var(--i)),1)}
+.home-story-top{margin-bottom:8vh}
+.home-story-bottom{margin:7vh 0 0;font-size:clamp(14px,1.1vw,17px);color:var(--muted);opacity:clamp(0,calc(var(--p,0) * 4 - 2.6),1)}
+
+/* ---------------------------------------------------------------- servicios: diapositivas sobre el título */
+.home-services-title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:min(12vw,22vh);line-height:1.15;text-align:center;text-shadow:6px 6px 0 #43105f,11px 12px 0 #0d0a3d}
+.home-services-note{position:absolute;top:max(110px,14vh);left:50%;transform:translateX(-50%);white-space:nowrap}
+.home-slides{position:absolute;inset:0;margin:0;padding:0;list-style:none;pointer-events:none}
+/* cada tarjeta cruza de abajo hacia arriba en su tramo; se superponen de a dos */
+.home-slide{--s:clamp(0,calc((var(--p,0) * (var(--n) + 1) - var(--k)) / 2),1);position:absolute;top:50%;left:50%;width:min(300px,64vw);transform:translate(calc(-50% + var(--x) * var(--spread,1)),calc(-50% + (1 - 2 * var(--s)) * 88svh)) rotate(var(--r));will-change:transform}
+.home-slide-card{display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;border-radius:18px;background:var(--cream);color:var(--night);box-shadow:0 30px 60px rgba(3,4,31,.5),inset 0 0 0 1px rgba(7,11,57,.08)}
+.home-slide-head,.home-slide-foot{display:flex;align-items:center;justify-content:space-between;margin:0}
+.home-slide-head{font-family:var(--pixel);font-size:14px}
+.home-slide-code{padding:5px 9px;background:#fffdf6;box-shadow:inset 0 0 0 1px rgba(7,11,57,.07);font-family:var(--mono);font-size:14px;letter-spacing:.04em}
+.home-slide-window{display:grid;place-items:center;aspect-ratio:4/3;border:3px solid var(--night);border-radius:6px;background:radial-gradient(circle at 62% 38%,#4a1f78,#120d50 72%)}
+.home-slide-window img{width:34%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 0 12px rgba(97,247,231,.45))}
+.home-slide h3{margin:4px 0 0;font-family:var(--pixel);font-size:11px;font-weight:400;line-height:1.5;text-transform:uppercase}
+.home-slide-text{margin:0;font-size:13px;line-height:1.4;color:#3b3768}
+.home-slide-foot{font-size:11px;letter-spacing:.08em;color:#4a467a}
+.home-slide-info{display:none}
+
+/* desktop: selección de personaje. Al detenerse la pantalla, el título grande y centrado se achica y
+   sube a una sola línea (--m: cada palabra va a su lugar; el ancho de las letras es 1em, la fuente es
+   monoespaciada) y después aparecen las 6 tarjetas juntas (--e). La elegida (mouse, foco o la
+   primera si no hay ninguna) sube, se enciende con el cursor P1 y muestra su descripción abajo, como
+   la ficha de un personaje. */
+@media(min-width:1001px){
+  .home-services{--m:clamp(0,calc((var(--p,0) - .08) / .4),1);--e:clamp(0,calc((var(--p,0) - .5) * 5),1)}
+  .home-services-title{--f:min(12vw,22vh);--s:.37;--ty:-23svh;font-size:var(--f)}
+  .home-services-title .home-line{transform-origin:50% 50%;will-change:transform}
+  /* "¿QUÉ" (4 letras) a la izquierda y "HAGO?" (5) a la derecha, en la misma fila */
+  .home-services-title .home-line:first-child{transform:translate(calc(var(--m) * var(--f) * var(--s) * -2.94),calc(var(--m) * (var(--ty) + var(--f) * .575))) scale(calc(1 - var(--m) * (1 - var(--s))))}
+  .home-services-title .home-line:last-child{transform:translate(calc(var(--m) * var(--f) * var(--s) * 2.45),calc(var(--m) * (var(--ty) - var(--f) * .575))) scale(calc(1 - var(--m) * (1 - var(--s))))}
+  .home-slides{inset:auto;top:36svh;left:50%;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:clamp(12px,1.3vw,22px);width:min(1400px,calc(100% - 2 * var(--gutter)));transform:translateX(-50%);pointer-events:auto}
+  .home-slide{position:static;width:auto;transform:none;will-change:auto;outline:none;cursor:help}
+  .home-slide-card{position:relative;height:100%;box-sizing:border-box;gap:8px;padding:12px;border-radius:0;background:linear-gradient(180deg,#1f1564,#110c4a);color:var(--cream);box-shadow:0 -3px 0 0 #3b2f8a,0 3px 0 0 #3b2f8a,-3px 0 0 0 #3b2f8a,3px 0 0 0 #3b2f8a,7px 9px 0 rgba(3,4,31,.55);opacity:var(--e);transform:translateY(calc((1 - var(--e)) * 60px));filter:brightness(.7) saturate(.75);transition:transform .16s steps(3),filter .16s steps(2)}
+  .home-slide-head{font-size:12px;color:var(--cyan)}
+  .home-slide-code{background:#0b0838;box-shadow:none;color:var(--muted);font-size:12px}
+  .home-slide-window{border-color:#3b2f8a}
+  .home-slide h3{min-height:3em;font-size:clamp(9px,.72vw,11px);color:var(--cream)}
+  .home-slide-text{display:none}
+  .home-slide-foot{font-size:10px;color:#8f88c4}
+  .home-slide-info{display:block;position:absolute;top:calc(100% + 28px);left:0;right:0;text-align:center;opacity:0;pointer-events:none}
+  .home-slide-info p{margin:0 auto;max-width:62ch;font-size:clamp(14px,1.05vw,17px);line-height:1.5;color:var(--muted)}
+  .home-slide-info .home-note{margin-bottom:10px;font-size:clamp(9px,.7vw,11px);color:var(--cyan)}
+  /* la elegida (data-selected, ver home-select.tsx) */
+  .home-slide[data-selected] .home-slide-card{filter:none;transform:translateY(calc((1 - var(--e)) * 60px - 14px));box-shadow:0 -3px 0 0 var(--cyan),0 3px 0 0 var(--cyan),-3px 0 0 0 var(--cyan),3px 0 0 0 var(--cyan),7px 9px 0 rgba(3,4,31,.55),0 0 0 9px rgba(97,247,231,.14)}
+  .home-slide[data-selected] .home-slide-info{opacity:var(--e)}
+  .home-slide-card::before,.home-slide-card::after{content:"";position:absolute;left:50%;display:none;transform:translateX(-50%);animation:select-blink .8s steps(1) infinite}
+  .home-slide-card::before{content:"P1";bottom:calc(100% + 18px);padding:4px 7px;background:var(--cyan);color:#09234a;font-family:var(--pixel);font-size:9px;line-height:1}
+  .home-slide-card::after{bottom:calc(100% + 8px);border:6px solid transparent;border-top-color:var(--cyan);border-bottom:0}
+  .home-slide[data-selected] .home-slide-card::before,.home-slide[data-selected] .home-slide-card::after{display:block}
+  .home-slide[data-selected] .home-slide-window img{animation:select-bob .6s steps(2) infinite}
+}
+@keyframes select-blink{0%,64%{opacity:1}65%,100%{opacity:.2}}
+@keyframes select-bob{50%{transform:translateY(-4px)}}
+
+/* ---------------------------------------------------------------- proyectos: una pantalla por proyecto */
+.home-project{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(30px,4vw,80px);align-items:center;align-content:center;padding:110px var(--gutter) 60px}
+.home-project:nth-of-type(even) .home-project-media{order:2}
+.home-project-media{display:grid;place-items:center;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 60% 40%,#33145d,#120d50 75%);box-shadow:0 30px 60px rgba(3,4,31,.45)}
+.home-project-media img,.home-project-media video{display:block;width:100%;height:100%;object-fit:cover;transform:scale(calc(1.12 - min(var(--p,0),.5) * .24))}
+/* sin imagen ni video: solo el texto, en un marco pixelado */
+.home-project-text{grid-template-columns:minmax(0,880px);justify-content:center}
+.home-project-text .home-project-copy{padding:clamp(28px,4vw,56px);border:3px solid #4feefa;background:rgba(5,19,63,.75);box-shadow:6px 7px 0 rgba(3,8,37,.75)}
+.home-project-copy{display:flex;flex-direction:column;align-items:flex-start;gap:24px;opacity:clamp(0,calc(var(--p,0) * 4 - .5),1);transform:translateX(calc((1 - clamp(0,calc(var(--p,0) * 3 - .2),1)) * 60px))}
+
+/* ---------------------------------------------------------------- proceso: los pasos en fila */
+.home-steps{display:flex;align-items:stretch;align-self:center;margin:0;padding:110px var(--gutter) 60px 0;list-style:none}
+.home-step{flex:none;display:flex;flex-direction:column;gap:18px;width:min(78vw,380px);padding:10px clamp(24px,3vw,48px);border-left:1px solid rgba(255,246,217,.18);opacity:clamp(.12,calc(var(--p,0) * 4 - .4),1);transform:translateX(calc((1 - clamp(0,calc(var(--p,0) * 3 - .2),1)) * 50px))}
+.home-step-number{font-family:var(--pixel);font-size:12px;color:var(--cyan);text-shadow:2px 2px 0 #073866}
+.home-step h3{font-size:clamp(18px,2.4vw,40px);transition:color .2s steps(2)}
+.home-step:hover h3{color:var(--cyan)}
+.home-step p{margin:0;max-width:36ch;font-size:clamp(15px,1.1vw,18px);line-height:1.5;color:var(--muted)}
+/* desktop: una sola pantalla. El título grande y centrado se achica y sube (--m) y después entran los
+   pasos juntos (--e), como en "¿Qué hago?" */
+@media(min-width:1001px){
+  .home-process{--m:clamp(0,calc((var(--p,0) - .08) / .4),1);--e:clamp(0,calc((var(--p,0) - .5) * 5),1);display:block;width:var(--vw,100vw)}
+  .home-process .home-section-head{position:absolute;inset:0;width:auto;align-items:center;justify-content:center;padding:0 var(--gutter);text-align:center;transform:translateY(calc(var(--m) * -28svh)) scale(calc(1 - var(--m) * .45))}
+  .home-process .home-section-head h2{font-size:min(7vw,13vh)}
+  .home-process .home-lead{opacity:calc(1 - var(--m))}
+  .home-steps{position:absolute;top:42svh;left:50%;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch;width:min(1400px,calc(100% - 2 * var(--gutter)));padding:0;transform:translateX(-50%)}
+  .home-step{width:auto;opacity:var(--e);transform:translateY(calc((1 - var(--e)) * 50px))}
+  .home-step h3{font-size:clamp(13px,1.35vw,22px)}
+}
+
+/* ---------------------------------------------------------------- sobre mí */
+.home-about-top{display:flex;justify-content:space-between;gap:20px;width:min(1200px,88vw);margin-bottom:8vh}
+.home-about-body{display:flex;flex-direction:column;justify-content:center;gap:20px;width:min(var(--vw,100vw),760px);padding:110px var(--gutter) 60px;opacity:clamp(0,calc(var(--p,0) * 4 - .3),1)}
+.home-about-body p{margin:0;font-size:clamp(15px,1.05vw,17px);line-height:1.55;color:var(--muted)}
+.home-about-body .home-about-links{display:flex;flex-wrap:wrap;gap:14px 30px}
+.home-about-links a{padding-bottom:4px;border-bottom:1px solid currentColor;color:var(--cyan);text-decoration:none}
+.home-about-links a:hover{color:var(--cream)}
+/* desktop: una sola pantalla. La frase se entinta en la primera mitad (--rp); después se achica y
+   sube (--m) y entra el resto del texto (--e) */
+@media(min-width:1001px){
+  .home-about{--rp:clamp(0,calc(var(--p,0) * 2.1),1);--m:clamp(0,calc((var(--p,0) - .52) / .25),1);--e:clamp(0,calc((var(--p,0) - .72) * 5),1);display:block;width:var(--vw,100vw)}
+  .home-about .home-story-inner{transform:translateY(calc(var(--m) * -25svh)) scale(calc(1 - var(--m) * .38))}
+  .home-about-body{position:absolute;top:47svh;left:50%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;width:min(1040px,calc(100% - 2 * var(--gutter)));padding:0;opacity:var(--e);transform:translate(-50%,calc((1 - var(--e)) * 40px))}
+  .home-about-body .home-about-links{grid-column:1/-1}
+}
+
+/* ---------------------------------------------------------------- cierre */
+.home-closing{display:grid;place-items:center;padding:120px var(--gutter);overflow:hidden;text-align:center;isolation:isolate}
+.home-closing-copy{display:flex;flex-direction:column;align-items:center;gap:22px;width:min(920px,100%)}
+/* el formulario de contacto (contact-form.tsx, estilos base en globals.css) */
+.home-closing .project-form{width:100%;box-sizing:border-box;margin-top:8px;text-align:left}
+.home-closing .form-submit{justify-content:center;width:calc(100% - 10px);margin:6px 7px 7px 3px}
+
+/* ---------------------------------------------------------------- footer: la última pantalla */
+.home-footer{display:flex;flex-direction:column;justify-content:center;padding:100px var(--gutter) calc(30px + env(safe-area-inset-bottom,0px));background:var(--night)}
+.home-footer-mark{margin:0 0 40px;font-family:var(--pixel);font-size:clamp(34px,12vw,230px);line-height:1;letter-spacing:-.04em;text-align:center;white-space:nowrap;color:var(--dim);text-shadow:6px 6px 0 #0d0a3d}
+.home-footer-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 30px;font-size:13px;color:#bdb6d6}
+.home-footer-row p{margin:0}
+.home-footer-row nav{display:flex;flex-wrap:wrap;gap:12px 26px}
+.home-footer-row a{color:var(--cyan);text-decoration:none}
+.home-footer-row a:hover{color:var(--cream)}
+
+/* ---------------------------------------------------------------- pantallas chicas */
+@media(max-width:1000px){.home-project{grid-template-columns:minmax(0,1fr);gap:24px}.home-project:nth-of-type(even) .home-project-media{order:0}}
+@media(max-width:700px){
+  .home-header{padding:calc(25px + env(safe-area-inset-top,0px)) 20px 25px}
+  .home-dock{right:20px}
+  .home-hero-copy h1{font-size:min(7vw,9vh)}
+  .home-slide{--spread:.3}
+  .home-services-title{font-size:min(14vw,18vh)}
+  .home-about-top{flex-direction:column;align-items:center;gap:10px}
+  .home-project{padding-top:96px}
+  .home-closing{padding:92px 16px 84px}
+  .home-closing-copy{gap:12px}
+  .home-closing .home-lead{display:none}
+  .home-project-copy{gap:16px}
+}
+
+/* ---------------------------------------------------------------- movimiento reducido: lectura estática */
+@media(prefers-reduced-motion:reduce){
+  .home-scroll-cue i{animation:none}
+  .home-project-media img,.home-project-copy,.home-step,.home-about-body{transform:none;opacity:1}
+  .home-services,.home-process,.home-about{--m:1;--e:1;--rp:1}
+  .home-slide-card::before,.home-slide-card::after,.home-slide-window img{animation:none!important}
+  .home-char::after,.home-story-bottom{opacity:1}
+  .home-type{visibility:visible;animation:none}
+  .home-type::after{display:none}
+}
+@media(prefers-reduced-motion:reduce) and (max-width:1000px){
+  /* servicios en mobile: las tarjetas en fila, sin cruzar */
+  .home-services{width:auto}
+  .home-services .home-pin{display:flex;align-items:center;gap:40px;padding:110px var(--gutter) 60px;overflow:visible}
+  .home-services-title{position:relative;inset:auto;flex:none;font-size:min(7vw,12vh)}
+  .home-services-note{position:absolute;top:max(110px,14vh);left:var(--gutter);transform:none}
+  .home-slides{position:relative;inset:auto;display:flex;gap:30px;flex:none}
+  .home-slide{position:relative;top:auto;left:auto;flex:none;width:280px;transform:rotate(calc(var(--r) * .3))}
+}
