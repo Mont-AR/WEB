@@ -17,6 +17,9 @@ export const EASE = [.22, 1, .36, 1];
 const SUN = { x: 1215, y: 482, r: 62 };
 const WIDE = W * 2.4;            // ancho de la cordillera y del cielo pintado, para el paneo
 const SPEED = { sky: .05, far: .1, cloudsFar: .14, cloudsNear: .2, valley: .5, front: 1 };
+// camino que sigue al pie de todas las pantallas: un tramo de PATH_P que se repite desde PATH_S,
+// escondido detrás del cerro del hero (asoma por su ladera derecha), y avanza a la par del contenido
+const PATH_P = W, PATH_S = W, PATH_TOP = 660;
 
 export const PALETTE = {
   ink: "#071139", night: "#0d0a3d", indigo: "#120d50", violet: "#43105f", lavender: "#b48cff",
@@ -63,6 +66,21 @@ function resample(pts, step = 10, closed = false) {
   }
   if (!closed) out.push(Q[Q.length - 1]);
   return out;
+}
+// ruido de valor periódico: n celdas en un período (el tramo del camino empalma consigo mismo)
+const pnoise = (x, period, n, seed) => {
+  const u = mod(x, period) / period * n, i = Math.floor(u), f = u - i, a = hash2(mod(i, n), seed), b = hash2(mod(i + 1, n), seed);
+  return lerp(a, b, f * f * (3 - 2 * f));
+};
+// cinta a lo largo de un recorrido: bordes a cada lado con el ancho de cada punto
+function band(pts, widthAt) {
+  const left = [], right = [];
+  pts.forEach(([x, y], i) => {
+    const [x0, y0] = pts[Math.max(0, i - 1)], [x1, y1] = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const nx = -(y1 - y0) / l, ny = (x1 - x0) / l, w = widthAt(i) / 2;
+    left.push([x + nx * w, y + ny * w]); right.push([x - nx * w, y - ny * w]);
+  });
+  return [...left, ...right.reverse()];
 }
 const circlePts = (cx, cy, r, ry = r) => { const n = Math.max(14, Math.round(r * .5)), o = []; for (let i = 0; i < n; i++) { const a = i / n * TAU; o.push([cx + Math.cos(a) * r, cy + Math.sin(a) * ry]); } return o; };
 
@@ -173,21 +191,24 @@ export function createHeroSunset() {
   // el río baja de la cordillera y pasa junto a la ciudad hasta salir por abajo
   const RIVER = resample([[742, 562], [720, 580], [690, 594], [700, 612], [676, 636], [652, 664], [662, 700], [638, 740], [650, 790], [632, 840], [624, 900], [620, 950]], 6);
   const riverW = (i) => lerp(3, 28, i / (RIVER.length - 1));
-  // cinta del río: bordes a cada lado del cauce, con ancho variable (k: fracción del ancho)
-  const riverBand = (k) => {
-    const left = [], right = [];
-    RIVER.forEach(([x, y], i) => {
-      const [x0, y0] = RIVER[Math.max(0, i - 1)], [x1, y1] = RIVER[Math.min(RIVER.length - 1, i + 1)], l = Math.hypot(x1 - x0, y1 - y0) || 1;
-      const nx = -(y1 - y0) / l, ny = (x1 - x0) / l, w = riverW(i) * k / 2;
-      left.push([x + nx * w, y + ny * w]); right.push([x - nx * w, y - ny * w]);
-    });
-    return [...left, ...right.reverse()];
-  };
+  const riverBand = (k) => band(RIVER, (i) => riverW(i) * k);
 
-  // ciudad en el fondo del valle: tres hileras (atrás más oscura y fría, adelante más cálida), el
-  // perfil más alto hacia el centro, techos variados, sombra del lado opuesto al sol y borde cálido
-  // del lado del sol; ventanas que se prenden y apagan y faroles en la calle
-  const CITY = { x0: 40, x1: 600 };
+  // tramo del camino (x local en [0, PATH_P]): lomas lejanas, lomas cercanas, el camino y el suelo
+  const pathY = (x) => 834 + 14 * Math.sin(TAU * x / PATH_P) + 8 * Math.sin(2 * TAU * x / PATH_P + 1);
+  const pathW = (x) => 50 + 10 * Math.sin(3 * TAU * x / PATH_P + .5);
+  const hillsFar = (x) => 712 + (pnoise(x, PATH_P, 8, 61) - .5) * 64 + 20 * Math.sin(2 * TAU * x / PATH_P + 2);
+  const hillsNear = (x) => 776 + (pnoise(x, PATH_P, 14, 62) - .5) * 30 + 10 * Math.sin(3 * TAU * x / PATH_P);
+
+  // ciudad en el fondo del valle, sobre una loma: tres hileras (atrás más oscura y fría, adelante más
+  // cálida) que arrancan cada una a su altura del terreno, con franjas de tierra delante que tapan
+  // las bases; perfil más alto hacia el centro, techos variados, sombra del lado opuesto al sol y
+  // borde cálido del lado del sol; ventanas que se prenden y apagan y faroles en la calle
+  const CITY = { x0: 40, x1: 580 };
+  // altura del terreno de la hilera d en x: loma que sube hacia el centro, con ondulaciones
+  const cityGround = (x, d) => {
+    const t = clamp((x - CITY.x0) / (CITY.x1 - CITY.x0)), hump = Math.sin(Math.PI * t) ** 1.2;
+    return ROWS[d].base - hump * (36 - d * 9) - Math.sin(t * 9 + d * 2) * 4 - (vnoise(x * .025, 5 + d) - .5) * 9 + (x < CITY.x0 || x > CITY.x1 ? 14 : 0);
+  };
   const ROWS = [
     { base: 742, hMin: 30, hMax: 96, wMin: 16, wMax: 32, fill: "#1d1663", shade: "#140e4c", rim: .25, line: .5 },
     { base: 760, hMin: 24, hMax: 72, wMin: 20, wMax: 40, fill: "#2a196d", shade: "#1c1158", rim: .45, line: .8 },
@@ -202,12 +223,13 @@ export function createHeroSunset() {
         const env = .4 + .6 * Math.sin(Math.PI * clamp((x + w / 2 - CITY.x0) / (CITY.x1 - CITY.x0)));
         const h = (row.hMin + r() * (row.hMax - row.hMin)) * env + 8;
         const pick = r(), kind = d === 2 ? (pick < .6 ? "gable" : "flat") : pick < .1 ? "dome" : pick < .26 ? "tower" : pick < .5 ? "step" : "flat";
-        const wall = kind === "flat" ? h : h * .76, b = { x, w, h, wall, base: row.base, kind, row: d };
+        const base = Math.max(cityGround(x + 2, d), cityGround(x + w - 2, d)) + 3;   // se apoya en el punto más bajo y se hunde un poco
+        const wall = kind === "flat" ? h : h * .76, b = { x, w, h, wall, base, kind, row: d };
         buildings.push(b);
         const cols = Math.max(1, Math.floor((w - 6) / 7)), cell = (w - 8) / cols, levels = Math.max(1, Math.floor((wall - 9) / 10));
         for (let i = 0; i < cols; i++) for (let j = 0; j < levels; j++) {
           if (r() < .28) continue;
-          windows.push({ x: x + 4 + i * cell + (cell - 3) / 2, y: row.base - wall + 6 + j * 10, period: [4, 5, 6, 7.5][Math.floor(r() * 4)], phase: r(), bias: r(), cold: r() < .035, row: d });
+          windows.push({ x: x + 4 + i * cell + (cell - 3) / 2, y: base - wall + 6 + j * 10, period: [4, 5, 6, 7.5][Math.floor(r() * 4)], phase: r(), bias: r(), cold: r() < .035, row: d });
         }
         x += w + (r() < .3 ? 2 + r() * 6 : 0);
       }
@@ -223,7 +245,7 @@ export function createHeroSunset() {
     return resample([...pts, [x + w, base], [x, base]], 7, true);
   };
   const towers = buildings.filter((b) => b.kind === "tower").map((b, i) => ({ x: b.x + b.w / 2, y: b.base - b.h - 16, phase: i * .37 }));
-  const lamps = Array.from({ length: 15 }, (_, i) => ({ x: CITY.x0 + 14 + i * (CITY.x1 - CITY.x0 - 28) / 14, y: 786 }));
+  const lamps = Array.from({ length: 14 }, (_, i) => { const x = CITY.x0 + 24 + i * (CITY.x1 - CITY.x0 - 48) / 13; return { x, y: cityGround(x, 2) + 6 }; });
 
   // estrellas, nubes, plantas, luciérnagas: posiciones con semilla fija
   const stars = [];
@@ -303,12 +325,12 @@ export function createHeroSunset() {
     wash(foot, "#160f52", { seed: 30 });
     brush(foot, [P.indigo, P.night, "#1b1160"], { seed: 31, alpha: .5, width: 22, angle: -.05 });
     ink(footTop, { w: 1.8, alpha: .55, seed: 30, col: "#3a2a8a" });
-    // río: el agua copia el cielo del horizonte, con orillas a pluma
+    paintCity();
+    // río: el agua copia el cielo del horizonte, con orillas a pluma (pasa por delante del pie de la ciudad)
     const river = riverBand(1);
     wash(river, "#7a2180", { seed: 40, amp: 1 });
     wash(riverBand(.4), "#b8337f", { seed: 41, amp: 1.4, alpha: .55 });
     ink(river, { closed: true, w: 1.6, alpha: .8, seed: 42, amp: 1 });
-    paintCity();
   }
   function paintCity() {
     // resplandor cálido de la ciudad sobre el valle
@@ -332,11 +354,13 @@ export function createHeroSunset() {
         ink(shape, { closed: true, w: 1.2, alpha: row.line, seed, amp: .7, passes: 1 });
         if (b.kind === "tower") ink([[b.x + b.w / 2, b.base - b.h], [b.x + b.w / 2, b.base - b.h - 16]], { w: 1.2, alpha: .9, seed: seed + 5, amp: .4, passes: 1 });
       }
-      // vereda entre hileras: una franja oscura con su línea a pluma
-      if (d === 2) {
-        wash([[CITY.x0 - 20, 780], [CITY.x1 + 16, 780], [CITY.x1 + 16, 792], [CITY.x0 - 20, 792]], "#120c44", { seed: 70, amp: .8 });
-        ink([[CITY.x0 - 20, 780], [CITY.x1 + 16, 780]], { w: 1.4, alpha: .8, seed: 71, amp: 1 });
-      }
+      // franja de terreno delante de la hilera: tapa las bases siguiendo la loma
+      const top = [];
+      for (let x = CITY.x0 - 70; x <= CITY.x1 + 40; x += 8) top.push([x, cityGround(x, d) + 4 + (x < CITY.x0 - 20 || x > CITY.x1 + 10 ? 30 : 0)]);
+      const ground = [...top, [CITY.x1 + 40, 900], [CITY.x0 - 70, 900]];
+      wash(ground, ["#181158", "#1b1160", "#1e1166"][d], { seed: 70 + d, amp: 1 });
+      if (d === 2) brush(ground, [P.indigo, "#1b1160", "#221470"], { seed: 73, alpha: .45, width: 14, angle: -.04 });
+      ink(top, { w: 1.3, alpha: .35 + d * .2, seed: 71 + d, amp: 1.2, col: d === 2 ? LINE : "#3a2a8a", passes: 1 });
     });
     // postes de los faroles
     for (const l of lamps) ink([[l.x, l.y + 4], [l.x, l.y - 9]], { w: 1.1, alpha: .85, seed: l.x, amp: .3, passes: 1 });
@@ -383,6 +407,57 @@ export function createHeroSunset() {
       ink(blob, { closed: true, w: 2.4, seed: s, col: "#2a1260", alpha: .9 });
     }
   }
+  function paintPath() {
+    const xs = []; for (let x = -60; x <= PATH_P + 60; x += 8) xs.push(x);
+    const line = (f) => xs.map((x) => [x, f(x)]), bottom = H + 40;
+    // lomas lejanas con luz rasante del atardecer
+    const far = line(hillsFar);
+    wash([...far, [PATH_P + 60, bottom], [-60, bottom]], "#26104f", { seed: 110 });
+    brush([...far, [PATH_P + 60, bottom], [-60, bottom]], ["#2e1260", "#220d48", "#33146a"], { seed: 111, alpha: .5, width: 24, angle: -.1 });
+    ink(far, { w: 2.2, col: P.coral, alpha: .4, seed: 112, passes: 1 });
+    ink(far, { w: 1.6, alpha: .6, seed: 113 });
+    // lomas cercanas, rayadas
+    const near = line(hillsNear);
+    wash([...near, [PATH_P + 60, bottom], [-60, bottom]], "#1d0a42", { seed: 114 });
+    hatch([...near, [PATH_P + 60, bottom], [-60, bottom]], { angle: -.6, gap: 9, alpha: .16, seed: 115 });
+    ink(near, { w: 2, alpha: .75, seed: 116 });
+    // el camino: tierra clara con luz rasante arriba, huellas y piedras
+    const road = band(line(pathY), (i) => pathW(xs[i]));
+    wash(road, "#6b2a6c", { seed: 120, amp: 2 });
+    brush(road, ["#8a3a78", "#7a3170", "#9a4a7c", "#5c2462"], { seed: 121, alpha: .7, width: 12, angle: 0 });
+    const edgeTop = xs.map((x) => [x, pathY(x) - pathW(x) / 2]), edgeBottom = xs.map((x) => [x, pathY(x) + pathW(x) / 2]);
+    ink(edgeTop.map(([x, y]) => [x, y + 3]), { w: 3, col: P.coral, alpha: .55, seed: 122, passes: 1 });
+    ctx.save(); ctx.strokeStyle = "#4a1a5a"; ctx.lineWidth = 1.6; ctx.lineCap = "round"; ctx.globalAlpha = .7;
+    for (let x = 10; x < PATH_P; x += 46 + hash2(x, 7) * 40) { const y = pathY(x) + (hash2(x, 8) - .5) * 14; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 18 + hash2(x, 9) * 20, y + .5); ctx.stroke(); }
+    ctx.restore();
+    for (let x = 20; x < PATH_P; x += 60 + hash2(x, 3) * 70) {
+      const y = pathY(x) + (hash2(x, 4) - .5) * pathW(x) * .5, r = 3 + hash2(x, 5) * 5;
+      wash(circlePts(x, y, r * 1.4, r * .7), "#4a1a5a", { seed: x, amp: .6 });
+      ctx.save(); ctx.strokeStyle = P.rose; ctx.globalAlpha = .7; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(x - r * .2, y - r * .25, r * .9, r * .35, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.restore();
+    }
+    ink(edgeTop, { w: 2, alpha: .75, seed: 123 });
+    // suelo delante del camino y matas de pasto en los bordes
+    wash([...edgeBottom, [PATH_P + 60, bottom], [-60, bottom]], "#170634", { seed: 124 });
+    ink(edgeBottom, { w: 2.2, alpha: .85, seed: 125 });
+    ctx.save(); ctx.lineCap = "round";
+    for (let x = 4; x < PATH_P; x += 14 + hash2(x, 11) * 26) {
+      const lower = hash2(x, 12) < .6, y0 = lower ? pathY(x) + pathW(x) / 2 + 2 : pathY(x) - pathW(x) / 2 + 1, n = 3 + Math.floor(hash2(x, 13) * 3), h = (lower ? 18 : 10) + hash2(x, 14) * 14;
+      for (let k = 0; k < n; k++) {
+        const bx = x + (k - n / 2) * 3, lean = (hash2(x + k, 15) - .5) * .7, tx = bx + Math.sin(lean) * h, ty = y0 - Math.cos(lean) * h;
+        ctx.strokeStyle = "#1c0838"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(bx, y0); ctx.quadraticCurveTo(bx + lean * 3, y0 - h * .6, tx, ty); ctx.stroke();
+        if (hash2(x + k, 16) < .7) { ctx.strokeStyle = P.peach; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(lerp(bx, tx, .7), lerp(y0, ty, .7)); ctx.lineTo(tx, ty); ctx.stroke(); }
+      }
+    }
+    ctx.restore();
+    // matas en las lomas cercanas
+    for (let x = 80; x < PATH_P - 40; x += 180 + hash2(x, 17) * 160) {
+      const y = hillsNear(x) + 10, r = 10 + hash2(x, 18) * 12;
+      const blob = circlePts(x, y - r * .7, r * 1.5, r * .85).map(([bx, by], i, all) => { const lobe = 1 + .22 * Math.abs(Math.sin(i / all.length * TAU * 3.5 + x)); return [x + (bx - x) * lobe, Math.min(y, y - r * .7 + (by - y + r * .7) * lobe)]; });
+      wash(blob, "#1e0a3c", { seed: x });
+      ctx.save(); ctx.strokeStyle = P.peach; ctx.globalAlpha = .85; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.beginPath(); ctx.ellipse(x + r * .25, y - r * .75, r * 1.3, r * .7, 0, Math.PI * 1.25, Math.PI * 1.95); ctx.stroke(); ctx.restore();
+      ink(blob, { closed: true, w: 1.6, alpha: .85, seed: x, amp: 1.2 });
+    }
+  }
   function paintCloud(c) {
     const r = rng(c.seed), n = Math.max(4, Math.round(c.w / 55)), base = c.h * .9;
     const pts = [];
@@ -410,7 +485,7 @@ export function createHeroSunset() {
 
   // ---- estado de resolución (lo fija resize)
   let cw = 0, ch = 0, k = 1, ox = 0, oy = 0, margin = 0;
-  let far = null, valley = [], front = [], cloudSprites = [];
+  let far = null, valley = [], front = [], path = [], cloudSprites = [];
 
   /** Ajusta el lienzo de salida (px de dispositivo) y prerenderiza los planos a esa escala. */
   function resize(width, height, { anchorX } = {}) {
@@ -441,6 +516,13 @@ export function createHeroSunset() {
     [far] = plate(-60, WIDE + 60, paintFar, 1, true);
     valley = plate(-60, W + 440, paintValley, BOILS);
     front = plate(-60, W + 440, paintFront, BOILS);
+    // el tramo del camino solo ocupa la franja de abajo: un lienzo bajo, con 60 de sobra a cada lado
+    path = Array.from({ length: BOILS }, (_, b) => {
+      const c = mk(Math.ceil((PATH_P + 120) * k), Math.ceil((H + 40 - PATH_TOP) * k) + 2 * margin);
+      boil = b; ctx = c.getContext("2d"); ctx.setTransform(k, 0, 0, k, 60 * k, -PATH_TOP * k + margin);
+      paintPath();
+      return paper(c);
+    });
     cloudSprites = clouds.map((c) => Array.from({ length: BOILS }, (_, b) => {
       const pad = 20, s = mk(Math.ceil((c.w + 2 * pad) * k), Math.ceil((c.h * 1.3 + 2 * pad) * k));
       boil = b; ctx = s.getContext("2d"); ctx.setTransform(k, 0, 0, k, pad * k, pad * k); paintCloud(c); return { s, pad };
@@ -556,6 +638,15 @@ export function createHeroSunset() {
 
     // cerro, sendero y primer plano
     const a3 = reveal(.4, 1);
+    // camino al pie de todas las pantallas: el tramo se repite desde detrás del cerro del hero
+    {
+      const pc = path[boil], [dx, dy] = shift(7), cam = camX(SPEED.front), sw = Math.round(PATH_P * k), pad = Math.round(60 * k);
+      out.setTransform(1, 0, 0, 1, 0, 0); out.globalAlpha = a3;
+      for (let i = Math.max(0, Math.floor((cam - PATH_S) / PATH_P)); PATH_S + i * PATH_P < cam + vw; i++) {
+        out.drawImage(pc, pad, 0, sw, pc.height, Math.round((PATH_S + i * PATH_P - cam) * k) + dx, Math.round((PATH_TOP - oy) * k) + dy - margin, sw, pc.height);
+      }
+      out.globalAlpha = 1;
+    }
     plane(front[boil], 7, SPEED.front, a3);
     // pasto: se mece en 3 poses cada 4 s, con una onda de viento de derecha a izquierda
     inWorld(7, SPEED.front); out.lineCap = "round"; out.globalAlpha = a3;
