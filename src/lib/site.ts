@@ -14,5 +14,5 @@ export const ogImage = {
   width: 1200,
   height: 630,
   type: "image/jpeg",
-  alt: "El explorador de MONT.AR recorre un paisaje nocturno camino a la cima",
+  alt: "MONT.AR: herramientas digitales para dar el próximo paso, sobre un atardecer dibujado a mano con un sendero que sube a la cima",
 } as const;

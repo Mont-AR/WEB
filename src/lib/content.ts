@@ -2,41 +2,25 @@ import rawContent from "../../content.json";
 
 type HeroSection = {
   id: "hero";
-  stageLabel: string;
-  titlePrefix: string;
   title: string;
   subtitle: string;
-  description: string;
-  action: string;
 };
 
 type ServicesSection = {
   id: "what-i-do";
-  navLabel: string;
-  stageLabel: string;
   title: string;
-  descripcion: string;
   list: string[];
   labels: Record<string, string>;
-  examples: string;
 };
 
 type StartingSection = {
   id: "starting-point";
-  navLabel: string;
-  stageLabel: string;
-  title: string;
-  descripcion: string;
-  /** title: tarjeta del recorrido (y valor que se envía); opcion: frase clara para el formulario */
-  list: { title: string; opcion: string; description: string }[];
+  /** title: valor que se envía y se valida; opcion: frase clara para el formulario y el mail */
+  list: { title: string; opcion: string }[];
 };
 
 type ProjectSection = {
   id: "project";
-  navLabel: string;
-  stageLabel: string;
-  title: string;
-  descripcion: string;
   form: {
     contactMethod: string;
     email: string;
@@ -85,14 +69,7 @@ type SiteContent = {
     descripcion: string;
     palabrasClave: string[];
   };
-  interfaz: {
-    scroll: string;
-    playhead: string;
-    recorridoCompleto: string;
-    inicio: string;
-    etapas: string;
-    whatsapp: string;
-  };
+  interfaz: { whatsapp: string };
   seccions: [HeroSection, ServicesSection, StartingSection, ProjectSection];
   inicio: HomeContent;
 };
@@ -106,7 +83,7 @@ export const serviceLabel = (value: string) => servicesContent.labels[value] ?? 
 export const homeContent = content.inicio;
 export const whatsappUrl = `https://wa.me/${content.contacto.whatsapp}?text=Hola%20Fabricio%2C%20quiero%20hablarte%20de%20un%20proyecto`;
 
-/** Ícono pixel art de cada servicio y punto de partida (los valores de content.json). */
+/** Ícono pixel art de cada servicio (los valores de content.json). */
 export const choiceIcons: Record<string, string> = {
   "web personalizada": "/card-icons/web.png",
   wordpress: "/card-icons/wordpress.png",
@@ -114,9 +91,6 @@ export const choiceIcons: Record<string, string> = {
   "sistemas de gestión": "/card-icons/sistemas-de-gestion.png",
   bots: "/card-icons/bots.png",
   "google workspace": "/card-icons/google-workspace.png",
-  Crear: "/card-icons/crear.png",
-  "Conectar y automatizar": "/card-icons/conectar-y-automatizar.png",
-  "Destrabar y mejorar": "/card-icons/destrabar-y-mejorar.png",
 };
 
 /** Frase clara de un punto de partida (para el formulario y el mail); si no la tiene, su título. */

@@ -26,29 +26,17 @@
     ]
   },
   "interfaz": {
-    "scroll": "Scroll para avanzar",
-    "playhead": "Scroll = playhead",
-    "recorridoCompleto": "Recorrido completo",
-    "inicio": "Inicio del recorrido",
-    "etapas": "Etapas del recorrido",
     "whatsapp": "WhatsApp"
   },
   "seccions": [
     {
       "id": "hero",
-      "stageLabel": "Home",
-      "titlePrefix": "",
       "title": "herramientas digitales",
-      "subtitle": "PARA DAR EL PRÓXIMO PASO",
-      "description": "Webs, sistemas y automatizaciones a medida.",
-      "action": "¡HABLEMOS DE TU PROYECTO!"
+      "subtitle": "PARA DAR EL PRÓXIMO PASO"
     },
     {
       "id": "what-i-do",
-      "navLabel": "Servicios",
-      "stageLabel": "Servicios",
       "title": "¿Qué hago?",
-      "descripcion": "Cada proyecto empieza por una necesidad.",
       "list": [
         "web personalizada",
         "wordpress",
@@ -64,39 +52,27 @@
         "sistemas de gestión": "Sistemas de gestión",
         "bots": "Bots",
         "google workspace": "Google Workspace"
-      },
-      "examples": ""
+      }
     },
     {
       "id": "starting-point",
-      "navLabel": "Necesidad",
-      "stageLabel": "Necesidad",
-      "title": "¿En qué punto estás?",
-      "descripcion": "Una idea nueva, procesos que llevan demasiado tiempo o algo que dejó de funcionar.",
       "list": [
         {
           "title": "Crear",
-          "opcion": "Empezar un proyecto desde cero",
-          "description": "Una solución a medida."
+          "opcion": "Empezar un proyecto desde cero"
         },
         {
           "title": "Conectar y automatizar",
-          "opcion": "Automatizar o conectar sistemas",
-          "description": "Menos tareas repetidas."
+          "opcion": "Automatizar o conectar sistemas"
         },
         {
           "title": "Destrabar y mejorar",
-          "opcion": "Arreglar o mejorar algo que ya tengo",
-          "description": "Un camino para seguir."
+          "opcion": "Arreglar o mejorar algo que ya tengo"
         }
       ]
     },
     {
       "id": "project",
-      "navLabel": "Tu proyecto",
-      "stageLabel": "Proyecto",
-      "title": "Contame tu proyecto",
-      "descripcion": "Unos datos para dar el próximo paso.",
       "form": {
         "contactMethod": "Forma de contacto",
         "email": "Mail",

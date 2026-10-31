@@ -31,7 +31,7 @@
 .home-button-small{padding:.8rem 1rem;font-size:clamp(8px,.62vw,10px)}
 .home-button-small .arrow{width:12px;height:12px}
 
-/* ---------------------------------------------------------------- carga: el loader de /contact (globals.css) hasta que
+/* ---------------------------------------------------------------- carga: el loader (globals.css) hasta que
    el paisaje está listo; mientras tanto el tipeo del hero espera */
 .home-loader{font-family:var(--pixel);transition:opacity .45s steps(5),visibility 0s .45s}
 .home[data-ready] .home-loader{opacity:0;visibility:hidden}
@@ -40,10 +40,9 @@
 /* ---------------------------------------------------------------- header */
 .home-header{position:fixed;z-index:20;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:calc(clamp(22px,3vw,48px) + env(safe-area-inset-top,0px)) clamp(24px,4.3vw,76px) clamp(22px,3vw,48px);pointer-events:none}
 .home-header>*{pointer-events:auto}
-/* la marca usa .brand de globals.css, igual que en /contact (con su tipografía pixel) */
+/* la marca usa .brand de globals.css, con la tipografía pixel */
 .home .brand{font-family:var(--pixel);line-height:normal}
-/* mismo padding que .site-header y el botón con márgenes negativos: la fila mide lo que la marca, así
-   que la marca queda a la misma altura que en /contact */
+/* el botón con márgenes negativos: la fila mide lo que la marca, así la marca no baja por el botón */
 .home-header .home-button{margin-block:-2rem}
 /* WhatsApp, fijo abajo a la derecha (donde iría un footer) */
 .home-dock{position:fixed;z-index:20;right:clamp(24px,4.3vw,76px);bottom:calc(clamp(18px,2.4vw,36px) + env(safe-area-inset-bottom,0px));margin:0}

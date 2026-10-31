@@ -3,27 +3,15 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { projectContent, serviceLabel, servicesContent, startingContent } from "@/lib/content";
 
-// Formulario de contacto (POST /api/contact), compartido por /contact y el cierre del inicio. El
-// servicio y el punto de partida pueden venir controlados desde afuera (el recorrido de /contact los
-// elige en pasos anteriores); si no, los maneja el propio formulario.
-export function ContactForm({ service: serviceProp, startingPoint: startingProp, onServiceChange, onStartingPointChange, idPrefix = "", buttonClassName = "hero-button", icon }: {
-  service?: string;
-  startingPoint?: string;
-  onServiceChange?: (value: string) => void;
-  onStartingPointChange?: (value: string) => void;
-  idPrefix?: string;
-  buttonClassName?: string;
-  icon?: ReactNode;
-}) {
-  const [ownService, setOwnService] = useState("");
-  const [ownStarting, setOwnStarting] = useState("");
+// Formulario de contacto del cierre del inicio (POST /api/contact).
+export function ContactForm({ idPrefix = "", icon }: { idPrefix?: string; icon?: ReactNode }) {
+  const [service, setService] = useState("");
+  const [startingPoint, setStartingPoint] = useState("");
   const [contactMethod, setContactMethod] = useState<"email" | "telefono">("email");
   const [contactValue, setContactValue] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const service = serviceProp ?? ownService, setService = onServiceChange ?? setOwnService;
-  const startingPoint = startingProp ?? ownStarting, setStartingPoint = onStartingPointChange ?? setOwnStarting;
   const formCopy = projectContent.form;
   const id = (name: string) => `${idPrefix}${name}`;
 
@@ -71,7 +59,7 @@ export function ContactForm({ service: serviceProp, startingPoint: startingProp,
     <div className="form-col">
       <label htmlFor={id("description")}>{formCopy.description}</label>
       <textarea id={id("description")} value={description} onChange={(event) => setDescription(event.target.value)} placeholder={formCopy.descriptionPlaceholder} rows={4} minLength={10} maxLength={3000} required />
-      <button className={`${buttonClassName} form-submit`} type="submit" disabled={isSubmitting}>{isSubmitting ? formCopy.submitting : formCopy.submit} {icon}</button>
+      <button className="home-button form-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? formCopy.submitting : formCopy.submit} {icon}</button>
     </div>
     <div className="sr-only" aria-hidden="true"><label htmlFor={id("website")}>No completar</label><input id={id("website")} name="website" tabIndex={-1} autoComplete="off" /></div>
     {status && <p className="form-status" role="status">{status}</p>}

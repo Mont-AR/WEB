@@ -206,7 +206,7 @@ export function Home() {
             <div className="home-closing-copy">
               <h2 id="cierre-title" className="home-display home-display-md">{cierre.titulo}</h2>
               <p className="home-lead">{cierre.descripcion}</p>
-              <ContactForm idPrefix="home-" buttonClassName="home-button" icon={<Arrow/>}/>
+              <ContactForm idPrefix="home-" icon={<Arrow/>}/>
             </div>
           </section>
 
