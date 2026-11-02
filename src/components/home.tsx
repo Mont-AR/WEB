@@ -19,6 +19,8 @@ const vars = (values: Record<string, string | number>) => values as CSSPropertie
 
 // Proyectos: ocultos por ahora (el contenido sigue en content.json → inicio.proyectos).
 const SHOW_PROJECTS = false;
+// Relato (la frase después del hero): oculto por ahora (el contenido sigue en content.json → inicio.relato).
+const SHOW_STORY = false;
 
 // Rotación y desplazamiento horizontal de cada tarjeta de servicio al cruzar la pantalla (mobile).
 const CARD_TILT = [-3.5, 9.5, -9.6, 5.5, -6.5, 3];
@@ -118,13 +120,13 @@ export function Home() {
             <p className="home-scroll-cue" aria-hidden="true"><span>{hero.scroll}</span><i/></p>
           </section>
 
-          <section className="home-screen home-story" data-screen data-hold="1.6" aria-label={relato.notaArriba}>
+          {SHOW_STORY && <section className="home-screen home-story" data-screen data-hold="1.6" aria-label={relato.notaArriba}>
             <div className="home-pin home-story-inner">
               <p className="home-note home-story-top">{relato.notaArriba}</p>
               <RevealText text={relato.texto}/>
               <p className="home-story-bottom">{relato.notaAbajo}</p>
             </div>
-          </section>
+          </section>}
 
           {/* en desktop, selección de personaje: el título se achica y aparecen las 6 tarjetas; la última
               señalada (mouse o foco; al principio, la primera) queda elegida con el cursor P1 y su
