@@ -29,9 +29,9 @@ button{cursor:pointer}
 .project-form input,.project-form select,.project-form textarea{width:100%;min-width:0;min-height:38px;padding:7px 10px;border:2px solid #40c8de;border-radius:0;background:#0b1d53;color:var(--cream);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:14px;line-height:1.4}
 .project-form textarea{resize:vertical;min-height:68px}.project-form input::placeholder,.project-form textarea::placeholder{color:#aaafd1}.project-form input:focus-visible,.project-form select:focus-visible,.project-form textarea:focus-visible{outline:2px solid #fff7cc;outline-offset:2px}
 .contact-fields{display:grid;grid-template-columns:145px minmax(0,1fr);gap:10px}.form-submit{margin-top:5px;width:100%;font-size:clamp(10px,1vw,14px);min-height:46px}.form-submit:disabled{cursor:wait;opacity:.75}
-.form-col{display:grid;gap:6px;align-content:start;min-width:0}.form-col:nth-child(2){grid-template-rows:auto 1fr auto;align-content:stretch}.form-col:nth-child(2) textarea{height:100%}
+.form-col{display:grid;gap:6px;align-content:start;min-width:0}
 .form-status{grid-column:1/-1;margin:4px 0 0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.45;color:#b6fff4}
-@media(max-width:900px){.project-form{grid-template-columns:1fr}.form-col:nth-child(2) textarea{height:auto}}
+@media(max-width:900px){.project-form{grid-template-columns:1fr}}
 @media(max-width:700px){.brand{font-size:16px}.project-form{padding:12px;gap:6px}.form-col{gap:5px}.project-form textarea{min-height:58px}.project-form label{font-size:9px}.contact-fields{grid-template-columns:105px minmax(0,1fr);gap:7px}.project-form input,.project-form select,.project-form textarea{font-size:13px;padding:8px}}
 @media(prefers-reduced-motion:reduce){.loader-sun,.loader-traveler,.loader-dots{animation:none}}
 /* puntero animado de todo el sitio (site-cursor.tsx): solo con mouse; en campos de texto, el del sistema */

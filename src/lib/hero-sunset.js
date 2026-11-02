@@ -8,6 +8,8 @@
 // los ciclos dividen 60 s, así el loop no tiene costura. El trazo "hierve" como animación a mano: se
 // redibuja 8 veces por segundo rotando 3 dibujos; por eso cada plano estático (montañas y valle,
 // cerro y sendero) se prerenderiza en sus 3 variantes y por cuadro solo se dibuja lo que se mueve.
+// El camino termina en un buzón al pie de la última pantalla (setRoadEnd): un tramo final prerenderizado
+// tapa el mosaico desde ahí y el buzón se dibuja por cuadro, porque su banderita se levanta al enviar.
 // Demo, capturas y póster: tools/hero-sunset/.
 
 export const W = 1600, H = 900, LOOP = 60;
@@ -485,7 +487,83 @@ export function createHeroSunset() {
 
   // ---- estado de resolución (lo fija resize)
   let cw = 0, ch = 0, k = 1, ox = 0, oy = 0, margin = 0;
-  let far = null, valley = [], front = [], path = [], cloudSprites = [];
+  // final del camino: x del mundo donde termina (null: sigue sin fin) y estado del buzón
+  let roadEnd = null, roadEndPlates = null, mailLabel = "", mailFlag = 0, mailShake = 0;
+  const pathAt = (x) => mod(x - PATH_S, PATH_P);
+  const mailScale = () => clamp(cw / k / 900, .85, 1.7);
+  const mailBaseY = () => pathY(pathAt(roadEnd)) - 4;
+
+  /** Tapa el camino a la derecha de roadEnd con lomas y suelo, y lo cierra en un claro redondeado. */
+  function paintRoadEnd(x1) {
+    const xs = []; for (let x = roadEnd; x <= x1; x += 8) xs.push(x);
+    const line = (f) => xs.map((x) => [x, f(pathAt(x))]), bottom = H + 40, right = x1 + 20;
+    const top = line((x) => pathY(x) - pathW(x) / 2 - 6), edge = line((x) => pathY(x) + pathW(x) / 2);
+    wash([...top, [right, bottom], [roadEnd, bottom]], "#26104f", { seed: 130 });
+    const near = line(hillsNear).map(([x, y], i) => [x, Math.max(y, top[i][1])]);
+    wash([...near, [right, bottom], [roadEnd, bottom]], "#1d0a42", { seed: 131 });
+    hatch([...near, [right, bottom], [roadEnd, bottom]], { angle: -.6, gap: 9, alpha: .16, seed: 132 });
+    ink(near, { w: 2, alpha: .75, seed: 133 });
+    wash([...edge, [right, bottom], [roadEnd, bottom]], "#170634", { seed: 134 });
+    ink(edge, { w: 2.2, alpha: .85, seed: 135 });
+    // el claro: la misma tierra del camino
+    const cy = pathY(pathAt(roadEnd)), half = pathW(pathAt(roadEnd)) / 2 + 8, rx = half * 3.2;
+    const clearing = circlePts(roadEnd, cy, rx, half);
+    wash(clearing, "#6b2a6c", { seed: 136, amp: 1.6 });
+    brush(clearing, ["#8a3a78", "#7a3170", "#9a4a7c", "#5c2462"], { seed: 137, alpha: .7, width: 12, angle: 0 });
+    const rim = []; for (let i = 0; i <= 24; i++) { const a = -Math.PI / 2 + i / 24 * Math.PI; rim.push([roadEnd + Math.cos(a) * rx, cy + Math.sin(a) * half]); }
+    ink(rim.slice(0, 13).map(([x, y]) => [x, y + 3]), { w: 3, col: P.coral, alpha: .55, seed: 138, passes: 1 });
+    ink(rim, { w: 2, alpha: .8, seed: 139 });
+    // matas de pasto sobre el suelo nuevo
+    ctx.save(); ctx.lineCap = "round";
+    for (let x = roadEnd + rx + 6; x < x1; x += 16 + hash2(Math.round(x), 141) * 30) {
+      const lx = pathAt(x), y0 = pathY(lx) + pathW(lx) / 2 + 2 + hash2(Math.round(x), 142) * 26, n = 3 + Math.floor(hash2(Math.round(x), 143) * 3), h = 16 + hash2(Math.round(x), 144) * 16;
+      for (let b = 0; b < n; b++) {
+        const bx = x + (b - n / 2) * 3, lean = (hash2(Math.round(x) + b, 145) - .5) * .7, tx = bx + Math.sin(lean) * h, ty = y0 - Math.cos(lean) * h;
+        ctx.strokeStyle = b === 1 ? P.peach : "#1c0838"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(bx, y0); ctx.quadraticCurveTo(bx + lean * 4, y0 - h * .6, tx, ty); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /** El buzón, en el plano del mundo: poste, caja, puerta y la banderita (mailFlag: 0 baja, 1 alta). */
+  function paintMailbox() {
+    const s = mailScale(), wob = mailShake * Math.sin(mailShake * 26) * .035;
+    ctx.save(); ctx.translate(roadEnd, mailBaseY()); ctx.scale(s, s); ctx.rotate(wob);
+    wash(circlePts(4, 2, 30, 6), "#2c0f4a", { seed: 150, alpha: .7, amp: .8 });
+    // trace() suaviza entre puntos: con los lados bien poblados, las esquinas de la chapa y la madera quedan firmes
+    const dense = (pts) => pts.flatMap(([x, y], i) => { const [nx, ny] = pts[(i + 1) % pts.length], n = Math.max(1, Math.round(Math.hypot(nx - x, ny - y) / 5)); return Array.from({ length: n }, (_, j) => [lerp(x, nx, j / n), lerp(y, ny, j / n)]); });
+    // poste de madera
+    const post = dense([[-7, 0], [-6, -92], [6, -92], [7, 0]]);
+    wash(post, "#5c2462", { seed: 151, amp: .6 });
+    ink([[-2, -8], [-2, -86]], { w: 2, col: P.coral, alpha: .4, seed: 152, amp: .6, passes: 1 });
+    ink(post, { w: 2.2, closed: true, seed: 153, amp: .6 });
+    // caja de chapa: base recta y techo en arco
+    const arch = (left, right, base, spring, rise) => { const pts = [[left, base], [right, base]]; for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI; pts.push([(left + right) / 2 + Math.cos(a) * (right - left) / 2, spring - Math.sin(a) * rise]); } return dense(pts); };
+    const body = arch(-62, 58, -92, -118, 34);
+    wash(body, P.magenta, { seed: 154, amp: .6 });
+    ink([[-46, -126], [-26, -140], [-2, -146], [22, -142], [42, -128]], { w: 3, col: P.cream, alpha: .45, seed: 155, amp: .6, passes: 1 });
+    ink([[-56, -98], [52, -98]], { w: 2, col: "#a11a72", alpha: .9, seed: 156, amp: .5, passes: 1 });
+    ink(body, { w: 2.4, closed: true, seed: 157, amp: .6 });
+    // puerta al frente de la caja: por acá entra la postal
+    const door = arch(-62, -42, -92, -112, 26);
+    wash(door, P.cream, { seed: 158, amp: .4 });
+    ink(door, { w: 2, closed: true, seed: 159, amp: .4 });
+    ink([[-56, -112], [-48, -112]], { w: 2.4, col: LINE, seed: 163, amp: .3, passes: 1 });
+    if (mailLabel) {
+      ctx.save(); ctx.font = '8px "Press Start 2P", monospace'; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = P.cream; ctx.fillText(mailLabel, -11, -112); ctx.restore();
+    }
+    // banderita: acostada sobre la caja; se levanta cuando llegó el mensaje
+    ctx.save(); ctx.translate(50, -103); ctx.rotate(lerp(-Math.PI / 2, 0, mailFlag));
+    const pole = dense([[-1.5, 2], [-1.5, -30], [1.5, -30], [1.5, 2]]), flag = dense([[1.5, -30], [20, -30], [20, -17], [1.5, -17]]);
+    wash(pole, LINE, { seed: 160, amp: .3 });
+    wash(flag, mailFlag > .5 ? P.gold : P.cyan, { seed: 161, amp: .3 });
+    ink(flag, { w: 1.8, closed: true, seed: 162, amp: .3 });
+    ctx.restore();
+    ctx.restore();
+  }
+
+  let far = null, valley = [], front = [], path = [], cloudSprites = [], paperize = (c) => c;
 
   /** Ajusta el lienzo de salida (px de dispositivo) y prerenderiza los planos a esa escala. */
   function resize(width, height, { anchorX } = {}) {
@@ -498,7 +576,8 @@ export function createHeroSunset() {
     const tile = mk(192, 192), tg = tile.getContext("2d"), img = tg.createImageData(192, 192);
     for (let i = 0; i < 192 * 192; i++) { const v = hash2(i, 77) * 255, f = hash2(i >> 3, 91) > .5 ? 1 : .6; img.data.set([v, v, v, 34 * f], i * 4); }
     tg.putImageData(img, 0, 0);
-    const paper = (c) => {
+    roadEndPlates = null;
+    const paper = paperize = (c) => {
       const g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = "source-atop"; g.globalAlpha = 1; g.fillStyle = g.createPattern(tile, "repeat"); g.fillRect(0, 0, c.width, c.height);
       g.globalCompositeOperation = "source-over";
@@ -536,6 +615,16 @@ export function createHeroSunset() {
    */
   function draw(out, t, entry = 1, px = 0, py = 0, pan = 0) {
     t = mod(t, LOOP);
+    // el tramo final depende de dónde termina el camino: se prerenderiza recién cuando hace falta
+    if (roadEnd !== null && !roadEndPlates) {
+      const x0 = roadEnd - 160, x1 = roadEnd + cw / k + 60;
+      roadEndPlates = Array.from({ length: BOILS }, (_, b) => {
+        const c = mk(Math.ceil((x1 - x0) * k), Math.ceil((H + 40 - PATH_TOP) * k) + 2 * margin);
+        boil = b; ctx = c.getContext("2d"); ctx.setTransform(k, 0, 0, k, -x0 * k, -PATH_TOP * k + margin);
+        paintRoadEnd(x1);
+        return { c: paperize(c), x0 };
+      });
+    }
     const ts = Math.floor(t * BOIL_FPS) / BOIL_FPS;       // el tiempo "a mano": avanza de a 8 cuadros por segundo
     boil = Math.floor(t * BOIL_FPS) % BOILS;
     const shift = (amp) => [-Math.round(px * amp * k), -Math.round(py * amp * k * .5)];
@@ -645,6 +734,13 @@ export function createHeroSunset() {
       for (let i = Math.max(0, Math.floor((cam - PATH_S) / PATH_P)); PATH_S + i * PATH_P < cam + vw; i++) {
         out.drawImage(pc, pad, 0, sw, pc.height, Math.round((PATH_S + i * PATH_P - cam) * k) + dx, Math.round((PATH_TOP - oy) * k) + dy - margin, sw, pc.height);
       }
+      if (roadEndPlates && roadEnd < cam + vw + 200) {
+        const { c, x0 } = roadEndPlates[boil];
+        out.drawImage(c, Math.round((x0 - cam) * k) + dx, Math.round((PATH_TOP - oy) * k) + dy - margin);
+        inWorld(7, SPEED.front); out.lineCap = "round";
+        paintMailbox();
+        out.setTransform(1, 0, 0, 1, 0, 0);
+      }
       out.globalAlpha = 1;
     }
     plane(front[boil], 7, SPEED.front, a3);
@@ -668,15 +764,25 @@ export function createHeroSunset() {
     out.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  return { resize, draw };
+  return {
+    resize, draw,
+    /** Termina el camino en la x del mundo indicada (null: sin final) y pone el nombre en el buzón. */
+    setRoadEnd(x, label = "") { if (x !== roadEnd) roadEndPlates = null; roadEnd = x; mailLabel = label; },
+    setMail(flag, shake = 0) { mailFlag = flag; mailShake = shake; },
+    /** Punto de la puerta del buzón, en unidades del mundo. */
+    mailDoor() { return roadEnd === null ? null : { x: roadEnd - 52 * mailScale(), y: mailBaseY() - 112 * mailScale() }; },
+    crop() { return { ox, oy, k }; },
+  };
 }
 
 // ---------------------------------------------------------------- montaje
 /**
  * Monta el fondo en `el` (posicionado): canvas absoluto detrás del contenido, tipo cover.
  * `setPan(px)` mueve la cámara a la derecha según el desplazamiento horizontal del contenido (px CSS).
+ * `setRoadEnd(px)` termina el camino en esa x de la pista (px CSS), con un buzón que dice `mailLabel`.
+ * `setMail(sent)` levanta o baja la banderita y `mailPoint()` da la puerta del buzón en px CSS del escenario.
  */
-export function mountHero(el, { reducedMotion } = {}) {
+export function mountHero(el, { reducedMotion, mailLabel = "" } = {}) {
   const reduced = reducedMotion ?? window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scene = createHeroSunset();
   const canvas = document.createElement("canvas");
@@ -685,7 +791,7 @@ export function mountHero(el, { reducedMotion } = {}) {
   el.appendChild(canvas);
   const out = canvas.getContext("2d");
 
-  let size = "", ratio = 1, scale = 1, panCss = 0;
+  let size = "", ratio = 1, scale = 1, panCss = 0, endCss = null;
   const layout = () => {
     const box = el.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
     // resolución con tope: el trazo a mano no necesita más y los planos se guardan anchos y x3
@@ -695,9 +801,19 @@ export function mountHero(el, { reducedMotion } = {}) {
     if (`${w}x${h}` === size) return false;
     size = `${w}x${h}`; canvas.width = w; canvas.height = h; ratio = w / Math.max(1, box.width);
     scale = scene.resize(w, h).scale;
+    placeEnd();
     return true;
   };
   const pan = () => panCss * ratio / scale;
+  // la cámara parte de ox: una x de la pista (px CSS) cae en ox + x en unidades del mundo
+  function placeEnd() { if (endCss !== null) scene.setRoadEnd(Math.round(scene.crop().ox + endCss * ratio / scale), mailLabel); }
+  // banderita: sube en MAIL_MS; la caja tiembla un momento al recibir la postal
+  const MAIL_MS = 520;
+  let mailSent = false, mailT0 = -1e9;
+  const applyMail = (now) => {
+    const q = reduced ? 1 : ease(clamp((now - mailT0) / MAIL_MS));
+    scene.setMail(mailSent ? q : 1 - q, mailSent && !reduced ? 1 - clamp((now - mailT0) / 420) : 0);
+  };
 
   // parallax: única entrada externa; el puntero se suaviza con la curva EASE
   const fine = !reduced && window.matchMedia("(pointer: fine)").matches;
@@ -714,6 +830,7 @@ export function mountHero(el, { reducedMotion } = {}) {
     if (destroyed || !visible || document.hidden) return;
     if (!start) start = now;
     const elapsed = (now - start) / 1000, q = ease(clamp((now - par.t0) / 900));
+    applyMail(now);
     scene.draw(out, elapsed % LOOP, ease(clamp(elapsed / ENTRY)), par.fx + (par.tx - par.fx) * q, par.fy + (par.ty - par.fy) * q, pan());
     raf = requestAnimationFrame(frame);
   };
@@ -738,6 +855,21 @@ export function mountHero(el, { reducedMotion } = {}) {
       if (px === panCss) return;
       panCss = px;
       if (reduced) still();   // sin animación: el cuadro fijo se redibuja solo cuando se mueve la vista
+    },
+    setRoadEnd(px) {
+      if (px === endCss) return;
+      endCss = px; placeEnd();
+      if (reduced) still();
+    },
+    setMail(sent) {
+      mailSent = sent; mailT0 = performance.now(); applyMail(mailT0);
+      if (reduced) still();
+    },
+    mailPoint() {
+      const door = scene.mailDoor();
+      if (!door) return null;
+      const { ox, oy, k } = scene.crop();
+      return { x: (door.x - ox - pan()) * k / ratio, y: (door.y - oy) * k / ratio };
     },
     destroy() {
       destroyed = true; cancelAnimationFrame(raf); clearTimeout(resizeTimer); resize.disconnect(); io.disconnect();

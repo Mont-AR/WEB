@@ -36,6 +36,9 @@ type ProjectSection = {
     submitting: string;
     success: string;
     error: string;
+    postal: string;
+    para: string;
+    otra: string;
   };
 };
 

@@ -57,8 +57,9 @@
 .home.is-rail .home-stage{position:sticky;top:0;overflow:hidden}
 .home-backdrop{position:absolute;inset:0;pointer-events:none}
 .home-hero-scene{position:absolute;inset:0;overflow:hidden;background:#071139}
-/* fuera del hero el paisaje queda de fondo, oscurecido para leer; abajo menos, para que se vea el camino */
-.home-scrim{position:absolute;inset:0;background:linear-gradient(180deg,var(--night) 0 70%,rgba(7,11,57,.35) 86%,rgba(7,11,57,.15));opacity:clamp(0,calc(var(--xr,0) * .9),.62)}
+/* fuera del hero el paisaje queda de fondo, oscurecido para leer; abajo menos, para que se vea el camino.
+   En la última pantalla (--xe) vuelve el atardecer: la postal tiene su propio fondo y el camino termina a la vista */
+.home-scrim{position:absolute;inset:0;background:linear-gradient(180deg,var(--night) 0 70%,rgba(7,11,57,.35) 86%,rgba(7,11,57,.15));opacity:calc(clamp(0,calc(var(--xr,0) * .9),.62) * (1 - var(--xe,0) * .75))}
 .home-track{position:relative;z-index:1;display:flex;width:max-content;height:100%;will-change:transform}
 .home-screen,.home-panel{position:relative;flex:none;box-sizing:border-box;width:var(--vw,100vw);height:100%}
 .home-pin{position:relative;height:100%;overflow:hidden}
@@ -192,14 +193,50 @@
 }
 
 /* ---------------------------------------------------------------- cierre */
-.home-closing{display:grid;place-items:center;padding:120px var(--gutter);overflow:hidden;text-align:center;isolation:isolate}
-.home-closing-copy{display:flex;flex-direction:column;align-items:center;gap:22px;width:min(920px,100%)}
-/* el formulario de contacto (contact-form.tsx, estilos base en globals.css) */
-.home-closing .project-form{width:100%;box-sizing:border-box;margin-top:8px;text-align:left}
-.home-closing .form-submit{justify-content:center;width:calc(100% - 10px);margin:6px 7px 7px 3px}
+.home-closing{display:grid;align-items:center;justify-items:start;padding:104px var(--gutter) 120px;overflow:hidden;isolation:isolate}
+.home-closing-copy{display:flex;flex-direction:column;align-items:flex-start;gap:clamp(10px,2vh,18px);width:min(62%,880px)}
+/* el formulario es una postal (contact-form.tsx; campos base en globals.css) con la piel de las tarjetas de servicios:
+   fondo violáceo y borde de pixeles, que pasa a cian mientras se completa, como la tarjeta elegida.
+   Mensaje a la izquierda; destinatario, estampilla y datos a la derecha */
+.home-closing .home-display-md{font-size:clamp(20px,min(3.4vw,6vh),56px)}
+.postal{display:grid;width:100%}
+.postal>*{grid-area:1/1;min-width:0}
+.home-closing .project-form{--edge:#3b2f8a;width:100%;box-sizing:border-box;gap:0 clamp(16px,2vw,28px);padding:clamp(14px,2.4vh,22px) clamp(14px,1.6vw,22px);border:0;background:linear-gradient(180deg,#2a1670,#140c4a);box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge),7px 9px 0 rgba(3,4,31,.55);transform-origin:center}
+.home-closing .project-form:focus-within{--edge:var(--cyan)}
+.home-closing .project-form label{color:var(--muted)}
+.home-closing .project-form :is(input,select,textarea){border-color:#3b2f8a;background-color:#0b0838}
+.home-closing .form-col{gap:4px}
+.home-closing .form-col-message{grid-template-rows:auto auto 1fr;padding-right:clamp(16px,2vw,28px);border-right:2px dashed #3b2f8a}
+.postal-head{margin:0 0 4px;font-family:var(--pixel);font-size:clamp(8px,.7vw,10px);letter-spacing:.06em;text-transform:uppercase;color:var(--cyan)}
+.home-closing .project-form textarea{height:100%;min-height:96px;resize:none;line-height:24px;background:repeating-linear-gradient(180deg,#0b0838 0 23px,#2a2370 23px 24px) local}
+.home-closing .contact-fields{grid-template-columns:96px minmax(0,1fr);gap:8px}
+.postal-address{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:2px}
+.postal-address p{margin:0;min-width:0;font-size:12px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+.postal-address b{display:block;color:var(--cream)}
+.postal-stamp{position:relative;flex:none;width:38px;height:46px;border:3px solid #3b2f8a;background:radial-gradient(circle at 68% 42%,var(--gold) 0 14%,transparent 15%),radial-gradient(circle at 62% 38%,#4a1f78,#120d50 72%)}
+.postal-stamp::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:#6b3fa0;clip-path:polygon(0 100%,0 62%,28% 18%,50% 58%,70% 34%,100% 72%,100% 100%)}
+.home-closing .form-submit{justify-content:center;width:calc(100% - 10px);min-height:40px;margin:8px 7px 7px 3px}
+/* enviada: la postal ya está en el buzón (sigue en la página para conservar el alto y lo escrito) */
+.postal[data-sent] .project-form{visibility:hidden}
+.postal-sent{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:24px;pointer-events:none}
+.postal-sent>*{pointer-events:auto}
+.postal-sent p{margin:0;max-width:30ch;font-family:var(--pixel);font-size:clamp(13px,1.3vw,20px);line-height:1.8;text-shadow:2px 2px 0 var(--violet)}
 
 /* ---------------------------------------------------------------- pantallas chicas */
-@media(max-width:1000px){.home-project{grid-template-columns:minmax(0,1fr);gap:24px}.home-project:nth-of-type(even) .home-project-media{order:0}}
+@media(max-width:1000px){.home-project{grid-template-columns:minmax(0,1fr);gap:24px}.home-project:nth-of-type(even) .home-project-media{order:0}
+  /* la postal en una columna, encima del buzón: primero el destinatario y los datos, después el mensaje y Enviar */
+  .home-closing-copy{width:min(100%,560px)}
+  .home-closing .project-form{grid-template-columns:minmax(0,1fr)}
+  .home-closing .form-col{display:contents}
+  .home-closing .project-form label{margin-top:4px}
+  .postal-head{display:none}
+  .home-closing .form-col-message label{order:4}
+  .home-closing .form-col-message textarea{order:5;height:auto;min-height:72px}
+  .home-closing .form-submit{order:6}
+  .home-closing .form-status{order:7}
+}
+@media(min-width:1001px) and (max-height:760px){.home-closing .home-lead{display:none}.home-closing{padding-top:88px}}
+@media(max-width:700px) and (max-height:720px){.postal-address{display:none}.home-closing .project-form textarea{min-height:48px}}
 @media(max-width:700px){
   .home-header{padding:calc(25px + env(safe-area-inset-top,0px)) 20px 25px}
   .home-dock{right:20px}
@@ -208,7 +245,7 @@
   .home-services-title{font-size:min(14vw,18vh)}
   .home-about-top{flex-direction:column;align-items:center;gap:10px}
   .home-project{padding-top:96px}
-  .home-closing{padding:92px 16px 84px}
+  .home-closing{align-items:start;padding:84px 16px 84px}
   .home-closing-copy{gap:12px}
   .home-closing .home-lead{display:none}
   .home-project-copy{gap:16px}

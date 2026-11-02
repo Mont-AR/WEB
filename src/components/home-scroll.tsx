@@ -8,7 +8,8 @@ import { useEffect } from "react";
 // con su borde izquierdo alineado y reciben el progreso del tramo en --p. Los [data-scene] reciben
 // --p según su posición horizontal: 0 cuando asoman por la derecha, 1 cuando salen por la
 // izquierda. Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
-// CSS (--xr, en pantallas).
+// CSS (--xr, en pantallas; --xe, de 0 a 1 al entrar la última pantalla). También dice dónde termina el
+// camino del paisaje (evento "home:road-end", px de la pista): adelante de la última pantalla.
 // Transiciones: entre pantallas no se queda a mitad de camino. Apenas la vista empieza a moverse
 // entre dos puntos de anclaje (el comienzo de cada pantalla o panel), completa sola el pase en la
 // dirección del scroll, como el cambio de pantalla de un juego; mientras dura (y mientras siga la
@@ -17,6 +18,7 @@ import { useEffect } from "react";
 // enlaces a una pantalla (#contact) también, con scroll suave.
 // Sin JS, la pista se recorre con scroll horizontal nativo (ver .home-stage en home.css).
 type Step = { el: HTMLElement; y0: number; hold: number; x0: number; move: number };
+const ROAD_END = { wide: .83, narrow: .6 };   // dónde queda el buzón, en anchos de la última pantalla
 const PASS_MS = 750;      // duración de un pase de una pantalla completa
 const QUIET_MS = 220;     // pausa sin rueda que da por terminada la inercia después de un pase
 const ease = (t: number) => (t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -72,6 +74,7 @@ export function HomeScroll() {
       }
       snaps = xs.map(Math.round).sort((a, b) => a - b).filter((v, i, all) => i === 0 || v - all[i - 1] > 2);
       x = -1;
+      window.dispatchEvent(new CustomEvent("home:road-end", { detail: maxX + vw * (wide ? ROAD_END.wide : ROAD_END.narrow) }));
     };
     // scroll vertical (relativo al riel) en el que la vista queda en x; en un anclaje con tramo
     // detenido, yendo hacia adelante llega al principio del tramo y hacia atrás, al final
@@ -108,6 +111,7 @@ export function HomeScroll() {
         x = nx;
         track.style.transform = `translate3d(${-x}px,0,0)`;
         home.style.setProperty("--xr", (x / vw).toFixed(4));
+        home.style.setProperty("--xe", Math.max(0, 1 - (Math.max(0, track.scrollWidth - vw) - x) / vw).toFixed(4));
         window.dispatchEvent(new CustomEvent("home:pan", { detail: x }));
       }
       for (const el of scenes) {

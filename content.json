@@ -87,7 +87,10 @@
         "submit": "Enviar",
         "submitting": "Enviando...",
         "success": "¡Gracias! Tu proyecto se envió. Te voy a contactar pronto.",
-        "error": "No pudimos enviar tu proyecto. Intentá de nuevo en unos minutos."
+        "error": "No pudimos enviar tu proyecto. Intentá de nuevo en unos minutos.",
+        "postal": "Tarjeta postal",
+        "para": "Para:",
+        "otra": "Escribir otra postal"
       }
     }
   ],
