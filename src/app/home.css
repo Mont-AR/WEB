@@ -86,13 +86,14 @@
 @keyframes cue-line{0%{transform:scaleX(0)}50%{transform:scaleX(1);transform-origin:left}51%{transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
 
 /* ---------------------------------------------------------------- frase que se entinta letra por letra */
-.home-story-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px var(--gutter);text-align:center}
+.home-about-intro{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px var(--gutter);text-align:center}
 .home-reveal-text{max-width:min(1200px,88vw);margin:0;font-family:var(--pixel);font-size:clamp(14px,min(2.3vw,5.2vh),40px);line-height:1.6;text-transform:uppercase}
 .home-word{display:inline-block;white-space:nowrap}
 .home-char{position:relative;display:inline-block;color:var(--dim)}
-.home-char::after{content:attr(data-c);position:absolute;top:0;left:0;color:var(--cream);opacity:clamp(0,calc(var(--rp,var(--p,0)) * var(--n) * 1.3 - var(--i)),1)}
-.home-story-top{margin-bottom:8vh}
-.home-story-bottom{margin:7vh 0 0;font-size:clamp(14px,1.1vw,17px);color:var(--muted);opacity:clamp(0,calc(var(--p,0) * 4 - 2.6),1)}
+/* entintado automático: al llegar a la pantalla (data-on) cada letra pasa a crema en su turno */
+.home-char::after{content:attr(data-c);position:absolute;top:0;left:0;color:var(--cream);opacity:0}
+[data-on] .home-char::after{animation:home-ink .28s linear calc(var(--i) * 24ms) forwards}
+@keyframes home-ink{to{opacity:1}}
 
 /* ---------------------------------------------------------------- servicios: diapositivas sobre el título */
 .home-services-title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:min(12vw,22vh);line-height:1.15;text-align:center;text-shadow:6px 6px 0 #43105f,11px 12px 0 #0d0a3d}
@@ -183,11 +184,11 @@
 .home-about-body .home-about-links{display:flex;flex-wrap:wrap;gap:14px 30px}
 .home-about-links a{padding-bottom:4px;border-bottom:1px solid currentColor;color:var(--cyan);text-decoration:none}
 .home-about-links a:hover{color:var(--cream)}
-/* desktop: una sola pantalla. La frase se entinta en la primera mitad (--rp); después se achica y
-   sube (--m) y entra el resto del texto (--e) */
+/* desktop: una sola pantalla. La frase se entinta sola al llegar; con el scroll se achica y sube (--m)
+   y entra el resto del texto (--e) */
 @media(min-width:1001px){
-  .home-about{--rp:clamp(0,calc(var(--p,0) * 2.1),1);--m:clamp(0,calc((var(--p,0) - .52) / .25),1);--e:clamp(0,calc((var(--p,0) - .72) * 5),1);display:block;width:var(--vw,100vw)}
-  .home-about .home-story-inner{transform:translateY(calc(var(--m) * -25svh)) scale(calc(1 - var(--m) * .38))}
+  .home-about{--m:clamp(0,calc((var(--p,0) - .1) / .45),1);--e:clamp(0,calc((var(--p,0) - .45) * 2.5),1);display:block;width:var(--vw,100vw)}
+  .home-about .home-about-intro{transform:translateY(calc(var(--m) * -25svh)) scale(calc(1 - var(--m) * .38))}
   .home-about-body{position:absolute;top:47svh;left:50%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;width:min(1040px,calc(100% - 2 * var(--gutter)));padding:0;opacity:var(--e);transform:translate(-50%,calc((1 - var(--e)) * 40px))}
   .home-about-body .home-about-links{grid-column:1/-1}
 }
@@ -255,9 +256,9 @@
 @media(prefers-reduced-motion:reduce){
   .home-scroll-cue i{animation:none}
   .home-project-media img,.home-project-copy,.home-step,.home-about-body{transform:none;opacity:1}
-  .home-services,.home-process,.home-about{--m:1;--e:1;--rp:1}
+  .home-services,.home-process,.home-about{--m:1;--e:1}
   .home-slide-card::before,.home-slide-card::after,.home-slide-window img{animation:none!important}
-  .home-char::after,.home-story-bottom{opacity:1}
+  .home-char::after{opacity:1;animation:none}
   .home-type{visibility:visible;animation:none}
   .home-type::after{display:none}
 }

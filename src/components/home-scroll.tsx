@@ -7,11 +7,13 @@ import { useEffect } from "react";
 // pantallas con data-hold se detienen ese tramo (en alturas de pantalla; data-hold-wide en desktop)
 // con su borde izquierdo alineado y reciben el progreso del tramo en --p. Los [data-scene] reciben
 // --p según su posición horizontal: 0 cuando asoman por la derecha, 1 cuando salen por la
-// izquierda. Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
+// izquierda. Los [data-reveal] reciben data-on (una sola vez) cuando ocupan la mayor parte de la vista,
+// para animaciones que corren solas (el entintado de "sobre mí"). Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
 // CSS (--xr, en pantallas; --xe, de 0 a 1 al entrar la última pantalla). También dice dónde termina el
 // camino del paisaje (evento "home:road-end", px de la pista): adelante de la última pantalla.
 // Transiciones: entre pantallas no se queda a mitad de camino. Apenas la vista empieza a moverse
-// entre dos puntos de anclaje (el comienzo de cada pantalla o panel), completa sola el pase en la
+// entre dos puntos de anclaje (el comienzo de cada pantalla y, en secciones más anchas que la vista,
+// de cada panel), completa sola el pase en la
 // dirección del scroll, como el cambio de pantalla de un juego; mientras dura (y mientras siga la
 // inercia de la rueda) el scroll del usuario queda en pausa.
 // Con el teclado, el foco dentro de la pista lleva el scroll hasta la pantalla de ese elemento; los
@@ -32,6 +34,7 @@ export function HomeScroll() {
     if (!home || !rail || !stage || !track) return;
     const screens = [...track.querySelectorAll<HTMLElement>("[data-screen]")];
     const scenes = [...track.querySelectorAll<HTMLElement>("[data-scene]")];
+    let reveals = [...track.querySelectorAll<HTMLElement>("[data-reveal]")];
     const last = new Map<HTMLElement, string>();
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let steps: Step[] = [], snaps: number[] = [], total = 0, frame = 0, x = -1;
@@ -65,9 +68,15 @@ export function HomeScroll() {
       }
       total = y;
       rail.style.height = `${total + vh}px`;
-      // anclajes: el comienzo de cada pantalla y panel; en secciones más anchas que la vista, cada paso
+      // anclajes: el comienzo de cada pantalla; en secciones más anchas que la vista, cada panel y cada
+      // paso (en una pantalla del ancho de la vista los paneles pueden estar superpuestos o centrados y
+      // su borde no es un lugar donde detenerse)
       const xs = [0, maxX];
-      for (const el of track.querySelectorAll<HTMLElement>("[data-screen], .home-panel")) xs.push(Math.min(maxX, leftIn(el)));
+      for (const el of screens) xs.push(Math.min(maxX, el.offsetLeft));
+      for (const el of track.querySelectorAll<HTMLElement>(".home-panel")) {
+        const section = el.closest<HTMLElement>("[data-screen]");
+        if (section && section.offsetWidth > vw + 1) xs.push(Math.min(maxX, leftIn(el)));
+      }
       for (const el of track.querySelectorAll<HTMLElement>(".home-step")) {
         const section = el.closest<HTMLElement>("[data-screen]");
         if (section && section.offsetWidth > vw + 1) xs.push(Math.min(maxX, Math.max(0, leftIn(el) - (vw - el.offsetWidth) / 2)));
@@ -119,6 +128,12 @@ export function HomeScroll() {
         if (r.right < -vw || r.left > 2 * vw) continue;
         set(el, (vw - r.left) / (vw + r.width));
       }
+      if (reveals.length) reveals = reveals.filter((el) => {
+        const r = el.getBoundingClientRect();
+        if (Math.min(r.right, vw) - Math.max(r.left, 0) < Math.min(r.width, vw) * .6) return true;
+        el.setAttribute("data-on", "");
+        return false;
+      });
       // ¿la vista quedó entre dos anclajes? completar el pase en la dirección del scroll
       const sy = window.scrollY;
       if (sy !== lastY) { dir = sy > lastY ? 1 : -1; lastY = sy; }

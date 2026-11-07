@@ -10,17 +10,15 @@ import { choiceIcons, content, heroContent, homeContent, serviceLabel, servicesC
 // Página de inicio: pantallas una al lado de la otra, como niveles de un jueguito (tipografía y
 // botones 8-bit compartidos con Nube Voladora), sobre un paisaje dibujado a mano que se desplaza
 // con parallax. El scroll vertical mueve la pista hacia la derecha; las pantallas con data-hold se
-// detienen un tramo y en él reciben su progreso en --p (home-scroll.tsx): las frases se "entintan"
-// letra por letra y las tarjetas de servicios cruzan sobre el título. Proyectos y pasos reciben --p
+// detienen un tramo y en él reciben su progreso en --p (home-scroll.tsx): la frase de "sobre mí" se
+// entinta letra por letra al llegar y las tarjetas de servicios cruzan sobre el título. Proyectos y pasos reciben --p
 // según su posición en pantalla y entran al aparecer.
-const { nav, hero, relato, servicios, proyectos, proceso, sobreMi, cierre } = homeContent;
+const { nav, hero, servicios, proyectos, proceso, sobreMi, cierre } = homeContent;
 const [brandName, brandTld] = content.marca.nombre.split(".");
 const vars = (values: Record<string, string | number>) => values as CSSProperties;
 
 // Proyectos: ocultos por ahora (el contenido sigue en content.json → inicio.proyectos).
 const SHOW_PROJECTS = false;
-// Relato (la frase después del hero): oculto por ahora (el contenido sigue en content.json → inicio.relato).
-const SHOW_STORY = false;
 
 // Rotación y desplazamiento horizontal de cada tarjeta de servicio al cruzar la pantalla (mobile).
 const CARD_TILT = [-3.5, 9.5, -9.6, 5.5, -6.5, 3];
@@ -34,7 +32,8 @@ function Chat() {
   return <svg className="arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 4h14v9H9l-4 3v-3H3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter"/></svg>;
 }
 
-/** Frase que se entinta letra por letra con el progreso de su escena (visible para lectores como texto entero). */
+/** Frase que se entinta letra por letra sola, al llegar a su pantalla (home-scroll.tsx le pone
+ * data-on); visible para lectores como texto entero. */
 function RevealText({ text, className = "" }: { text: string; className?: string }) {
   let index = 0;
   const words = text.split(" ");
@@ -120,13 +119,6 @@ export function Home() {
             <p className="home-scroll-cue" aria-hidden="true"><span>{hero.scroll}</span><i/></p>
           </section>
 
-          {SHOW_STORY && <section className="home-screen home-story" data-screen data-hold="1.6" aria-label={relato.notaArriba}>
-            <div className="home-pin home-story-inner">
-              <p className="home-note home-story-top">{relato.notaArriba}</p>
-              <RevealText text={relato.texto}/>
-              <p className="home-story-bottom">{relato.notaAbajo}</p>
-            </div>
-          </section>}
 
           {/* en desktop, selección de personaje: el título se achica y aparecen las 6 tarjetas; la última
               señalada (mouse o foco; al principio, la primera) queda elegida con el cursor P1 y su
@@ -173,9 +165,9 @@ export function Home() {
             </article>)}
           </section>}
 
-          {/* la frase se entinta; en desktop después se achica y entra el resto del texto */}
-          <section id="sobre-mi" className="home-screen home-about" data-screen data-hold="1.3" data-hold-wide="2.2" aria-labelledby="sobre-mi-title">
-            <div className="home-panel home-story-inner">
+          {/* la frase se entinta sola al llegar; en desktop, con el scroll se achica y entra el resto del texto */}
+          <section id="sobre-mi" className="home-screen home-about" data-screen data-hold-wide="1.1" aria-labelledby="sobre-mi-title">
+            <div className="home-panel home-about-intro" data-reveal>
               <p className="home-note home-about-top"><span id="sobre-mi-title">{sobreMi.titulo}</span><span>{content.marca.firma}</span></p>
               <RevealText text={sobreMi.parrafos[0]}/>
             </div>

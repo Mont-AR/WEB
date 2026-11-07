@@ -45,7 +45,6 @@ type ProjectSection = {
 type HomeContent = {
   nav: { contacto: string };
   hero: { kicker: string; scroll: string };
-  relato: { notaArriba: string; texto: string; notaAbajo: string };
   servicios: { kicker: string; descripciones: Record<string, string> };
   proyectos: {
     kicker: string;
