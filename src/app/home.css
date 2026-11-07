@@ -176,7 +176,7 @@
   .home-process{display:block;width:var(--vw,100vw)}
   .home-process .home-section-head{position:absolute;inset:0;width:auto;align-items:center;justify-content:center;padding:0 var(--gutter);text-align:center;transform:translateY(calc(var(--m) * -28svh)) scale(calc(1 - var(--m) * .45))}
   .home-process .home-section-head h2{font-size:min(7vw,13vh)}
-  .home-process .home-lead{opacity:calc(1 - var(--m))}
+  .home-process .home-lead{display:none}
   .home-steps{position:absolute;top:42svh;left:50%;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch;width:min(1400px,calc(100% - 2 * var(--gutter)));padding:0;transform:translateX(-50%)}
   .home-step{width:auto;opacity:var(--e);transform:translateY(calc((1 - var(--e)) * 50px))}
   .home-step h3{font-size:clamp(13px,1.35vw,22px)}
