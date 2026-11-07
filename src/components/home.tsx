@@ -10,8 +10,9 @@ import { choiceIcons, content, heroContent, homeContent, serviceLabel, servicesC
 // Página de inicio: pantallas una al lado de la otra, como niveles de un jueguito (tipografía y
 // botones 8-bit compartidos con Nube Voladora), sobre un paisaje dibujado a mano que se desplaza
 // con parallax. El scroll vertical mueve la pista hacia la derecha; las pantallas con data-hold se
-// detienen un tramo y en él reciben su progreso en --p (home-scroll.tsx): la frase de "sobre mí" se
-// entinta letra por letra al llegar y las tarjetas de servicios cruzan sobre el título. Proyectos y pasos reciben --p
+// detienen un tramo y en él reciben su progreso en --p (home-scroll.tsx): en mobile las tarjetas de
+// servicios cruzan sobre el título. Las pantallas con data-reveal se animan solas al llegar (data-on):
+// la frase de "sobre mí" se entinta y, en desktop, el título grande se achica y entra el contenido. Proyectos y pasos reciben --p
 // según su posición en pantalla y entran al aparecer.
 const { nav, hero, servicios, proyectos, proceso, sobreMi, cierre } = homeContent;
 const [brandName, brandTld] = content.marca.nombre.split(".");
@@ -123,7 +124,7 @@ export function Home() {
           {/* en desktop, selección de personaje: el título se achica y aparecen las 6 tarjetas; la última
               señalada (mouse o foco; al principio, la primera) queda elegida con el cursor P1 y su
               descripción abajo. En mobile cruzan la pantalla. */}
-          <section id="servicios" className="home-screen home-services" data-screen data-hold={(services.length + 1) * .55} data-hold-wide="1.2" aria-labelledby="servicios-title" style={vars({ "--n": services.length })}>
+          <section id="servicios" className="home-screen home-services" data-screen data-hold={(services.length + 1) * .55} data-hold-wide="0" data-reveal aria-labelledby="servicios-title" style={vars({ "--n": services.length })}>
             <div className="home-pin">
               <h2 id="servicios-title" className="home-display home-services-title">
                 {servicesWords.map((word) => <span key={word} className="home-line">{word}</span>)}
@@ -165,9 +166,9 @@ export function Home() {
             </article>)}
           </section>}
 
-          {/* la frase se entinta sola al llegar; en desktop, con el scroll se achica y entra el resto del texto */}
-          <section id="sobre-mi" className="home-screen home-about" data-screen data-hold-wide="1.1" aria-labelledby="sobre-mi-title">
-            <div className="home-panel home-about-intro" data-reveal>
+          {/* al llegar, la frase se entinta sola; en desktop después se achica y entra el resto del texto */}
+          <section id="sobre-mi" className="home-screen home-about" data-screen data-reveal aria-labelledby="sobre-mi-title">
+            <div className="home-panel home-about-intro">
               <p className="home-note home-about-top"><span id="sobre-mi-title">{sobreMi.titulo}</span><span>{content.marca.firma}</span></p>
               <RevealText text={sobreMi.parrafos[0]}/>
             </div>
@@ -181,7 +182,7 @@ export function Home() {
           </section>
 
           {/* en desktop, título grande que se achica y después los pasos juntos; en mobile, en fila */}
-          <section id="proceso" className="home-screen home-process" data-screen data-hold-wide="1.3" aria-labelledby="proceso-title">
+          <section id="proceso" className="home-screen home-process" data-screen data-reveal aria-labelledby="proceso-title">
             <header className="home-panel home-section-head">
               <p className="home-note">{proceso.kicker}</p>
               <h2 id="proceso-title" className="home-display home-display-md">{proceso.titulo}</h2>

@@ -8,7 +8,7 @@ import { useEffect } from "react";
 // con su borde izquierdo alineado y reciben el progreso del tramo en --p. Los [data-scene] reciben
 // --p según su posición horizontal: 0 cuando asoman por la derecha, 1 cuando salen por la
 // izquierda. Los [data-reveal] reciben data-on (una sola vez) cuando ocupan la mayor parte de la vista,
-// para animaciones que corren solas (el entintado de "sobre mí"). Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
+// para animaciones que corren solas (el entintado de "sobre mí", la entrada del contenido en desktop). Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
 // CSS (--xr, en pantallas; --xe, de 0 a 1 al entrar la última pantalla). También dice dónde termina el
 // camino del paisaje (evento "home:road-end", px de la pista): adelante de la última pantalla.
 // Transiciones: entre pantallas no se queda a mitad de camino. Apenas la vista empieza a moverse
@@ -130,7 +130,7 @@ export function HomeScroll() {
       }
       if (reveals.length) reveals = reveals.filter((el) => {
         const r = el.getBoundingClientRect();
-        if (Math.min(r.right, vw) - Math.max(r.left, 0) < Math.min(r.width, vw) * .6) return true;
+        if (Math.min(r.right, vw) - Math.max(r.left, 0) < Math.min(r.width, vw) * .8) return true;
         el.setAttribute("data-on", "");
         return false;
       });

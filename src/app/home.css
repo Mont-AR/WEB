@@ -91,6 +91,10 @@
 .home-word{display:inline-block;white-space:nowrap}
 .home-char{position:relative;display:inline-block;color:var(--dim)}
 /* entintado automático: al llegar a la pantalla (data-on) cada letra pasa a crema en su turno */
+/* secuencia de llegada (desktop) en servicios, sobre mí y proceso: --m achica y sube el título y --e hace
+   entrar el contenido; van de 0 a 1 solos cuando la pantalla recibe data-on (home-scroll.tsx) */
+@property --m{syntax:"<number>";inherits:true;initial-value:0}
+@property --e{syntax:"<number>";inherits:true;initial-value:0}
 .home-char::after{content:attr(data-c);position:absolute;top:0;left:0;color:var(--cream);opacity:0}
 [data-on] .home-char::after{animation:home-ink .28s linear calc(var(--i) * 24ms) forwards}
 @keyframes home-ink{to{opacity:1}}
@@ -112,13 +116,14 @@
 .home-slide-foot{font-size:11px;letter-spacing:.08em;color:#4a467a}
 .home-slide-info{display:none}
 
-/* desktop: selección de personaje. Al detenerse la pantalla, el título grande y centrado se achica y
+/* desktop: selección de personaje. Al llegar a la pantalla, el título grande y centrado se achica y
    sube a una sola línea (--m: cada palabra va a su lugar; el ancho de las letras es 1em, la fuente es
    monoespaciada) y después aparecen las 6 tarjetas juntas (--e). La elegida (mouse, foco o la
    primera si no hay ninguna) sube, se enciende con el cursor P1 y muestra su descripción abajo, como
    la ficha de un personaje. */
 @media(min-width:1001px){
-  .home-services{--m:clamp(0,calc((var(--p,0) - .08) / .4),1);--e:clamp(0,calc((var(--p,0) - .5) * 5),1)}
+  .home-services,.home-process{--m:0;--e:0;transition:--m .8s cubic-bezier(.65,0,.35,1) .35s,--e .5s ease-out 1.05s}
+  .home-services[data-on],.home-process[data-on],.home-about[data-on]{--m:1;--e:1}
   .home-services-title{--f:min(12vw,22vh);--s:.37;--ty:-23svh;font-size:var(--f)}
   .home-services-title .home-line{transform-origin:50% 50%;will-change:transform}
   /* "¿QUÉ" (4 letras) a la izquierda y "HAGO?" (5) a la derecha, en la misma fila */
@@ -165,10 +170,10 @@
 .home-step h3{font-size:clamp(18px,2.4vw,40px);transition:color .2s steps(2)}
 .home-step:hover h3{color:var(--cyan)}
 .home-step p{margin:0;max-width:36ch;font-size:clamp(15px,1.1vw,18px);line-height:1.5;color:var(--muted)}
-/* desktop: una sola pantalla. El título grande y centrado se achica y sube (--m) y después entran los
-   pasos juntos (--e), como en "¿Qué hago?" */
+/* desktop: una sola pantalla. Al llegar, el título grande y centrado se achica y sube (--m) y después
+   entran los pasos juntos (--e), como en "¿Qué hago?" */
 @media(min-width:1001px){
-  .home-process{--m:clamp(0,calc((var(--p,0) - .08) / .4),1);--e:clamp(0,calc((var(--p,0) - .5) * 5),1);display:block;width:var(--vw,100vw)}
+  .home-process{display:block;width:var(--vw,100vw)}
   .home-process .home-section-head{position:absolute;inset:0;width:auto;align-items:center;justify-content:center;padding:0 var(--gutter);text-align:center;transform:translateY(calc(var(--m) * -28svh)) scale(calc(1 - var(--m) * .45))}
   .home-process .home-section-head h2{font-size:min(7vw,13vh)}
   .home-process .home-lead{opacity:calc(1 - var(--m))}
@@ -184,10 +189,10 @@
 .home-about-body .home-about-links{display:flex;flex-wrap:wrap;gap:14px 30px}
 .home-about-links a{padding-bottom:4px;border-bottom:1px solid currentColor;color:var(--cyan);text-decoration:none}
 .home-about-links a:hover{color:var(--cream)}
-/* desktop: una sola pantalla. La frase se entinta sola al llegar; con el scroll se achica y sube (--m)
-   y entra el resto del texto (--e) */
+/* desktop: una sola pantalla. Al llegar la frase se entinta; después se achica y sube (--m) y entra
+   el resto del texto (--e) */
 @media(min-width:1001px){
-  .home-about{--m:clamp(0,calc((var(--p,0) - .1) / .45),1);--e:clamp(0,calc((var(--p,0) - .45) * 2.5),1);display:block;width:var(--vw,100vw)}
+  .home-about{--m:0;--e:0;transition:--m .8s cubic-bezier(.65,0,.35,1) 1.7s,--e .5s ease-out 2.4s;display:block;width:var(--vw,100vw)}
   .home-about .home-about-intro{transform:translateY(calc(var(--m) * -25svh)) scale(calc(1 - var(--m) * .38))}
   .home-about-body{position:absolute;top:47svh;left:50%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;width:min(1040px,calc(100% - 2 * var(--gutter)));padding:0;opacity:var(--e);transform:translate(-50%,calc((1 - var(--e)) * 40px))}
   .home-about-body .home-about-links{grid-column:1/-1}
@@ -256,7 +261,7 @@
 @media(prefers-reduced-motion:reduce){
   .home-scroll-cue i{animation:none}
   .home-project-media img,.home-project-copy,.home-step,.home-about-body{transform:none;opacity:1}
-  .home-services,.home-process,.home-about{--m:1;--e:1}
+  .home-services,.home-process,.home-about{--m:1;--e:1;transition:none}
   .home-slide-card::before,.home-slide-card::after,.home-slide-window img{animation:none!important}
   .home-char::after{opacity:1;animation:none}
   .home-type{visibility:visible;animation:none}
