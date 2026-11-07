@@ -58,9 +58,16 @@ export const viewport: Viewport = {
 
 const jsonLd = JSON.stringify(structuredData).replace(/</g, "\\u003c");
 
+// html.js: hay JavaScript. Se marca apenas llega el HTML (antes que React) para que la versión animada
+// no parpadee; sin JS no se marca y el inicio se muestra estático y apilado (home.css, "sin JS").
+const jsFlag = 'document.documentElement.classList.add("js")';
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-AR">
+    <html lang="es-AR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: jsFlag }}/>
+      </head>
       <body>
         {children}
         <SiteCursor/>

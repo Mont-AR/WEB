@@ -18,7 +18,7 @@ import { useEffect } from "react";
 // inercia de la rueda) el scroll del usuario queda en pausa.
 // Con el teclado, el foco dentro de la pista lleva el scroll hasta la pantalla de ese elemento; los
 // enlaces a una pantalla (#contact) también, con scroll suave.
-// Sin JS, la pista se recorre con scroll horizontal nativo (ver .home-stage en home.css).
+// Sin JS (html sin .js, ver layout.tsx) el inicio se muestra estático y apilado (home.css, "sin JS").
 type Step = { el: HTMLElement; y0: number; hold: number; x0: number; move: number };
 const ROAD_END = { wide: .83, narrow: .6 };   // dónde queda el buzón, en anchos de la última pantalla
 const PASS_MS = 750;      // duración de un pase de una pantalla completa

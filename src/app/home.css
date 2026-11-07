@@ -75,6 +75,7 @@
 /* tipeo del hero (home.tsx): cada letra aparece en su --d (ms) y un cursor de bloque la sigue
    durante --s; el último queda titilando */
 .home-type{position:relative;visibility:hidden;animation:home-type-in 1ms calc(var(--d) * 1ms) forwards}
+.home-type::before,.home-char::before{content:attr(data-c)}
 .home-type::after{content:"";position:absolute;left:100%;top:.08em;bottom:.08em;width:.62em;margin-left:.06em;background:currentColor;opacity:0;animation:home-caret calc(var(--s) * 1ms) steps(1) calc(var(--d) * 1ms)}
 .home-type-end::after{animation:home-caret-blink 1s steps(1) calc(var(--d) * 1ms) infinite}
 @keyframes home-type-in{to{visibility:visible}}
@@ -228,6 +229,9 @@
 .postal-sent>*{pointer-events:auto}
 .postal-sent p{margin:0;max-width:30ch;font-family:var(--pixel);font-size:clamp(13px,1.3vw,20px);line-height:1.8;text-shadow:2px 2px 0 var(--violet)}
 
+.home-closing-direct{display:none;flex-wrap:wrap;align-items:center;gap:18px 30px;margin:8px 0 0}
+.home-closing-direct a:not(.home-button){padding-bottom:4px;border-bottom:1px solid currentColor;color:var(--cyan);text-decoration:none}
+
 /* ---------------------------------------------------------------- pantallas chicas */
 @media(max-width:1000px){.home-project{grid-template-columns:minmax(0,1fr);gap:24px}.home-project:nth-of-type(even) .home-project-media{order:0}
   /* la postal en una columna, encima del buzón: primero el destinatario y los datos, después el mensaje y Enviar */
@@ -275,4 +279,39 @@
   .home-services-note{position:absolute;top:max(110px,14vh);left:var(--gutter);transform:none}
   .home-slides{position:relative;inset:auto;display:flex;gap:30px;flex:none}
   .home-slide{position:relative;top:auto;left:auto;flex:none;width:280px;transform:rotate(calc(var(--r) * .3))}
+}
+
+/* ---------------------------------------------------------------- sin JS (html sin .js, ver layout.tsx):
+   lectura estática. Las pantallas se apilan y se recorren con el scroll normal, todo en su estado final;
+   en vez del formulario, WhatsApp y el email */
+html:not(.js) .home{--vw:100%;overflow-x:clip}
+html:not(.js) .home-stage{height:auto;overflow:visible}
+html:not(.js) .home-track{display:block;width:auto;height:auto;transform:none}
+html:not(.js) .home-screen{width:auto;height:100svh}
+html:not(.js) .home-scroll-cue{display:none}
+html:not(.js) .home-type{visibility:visible;animation:none}
+html:not(.js) .home-type::after{display:none}
+html:not(.js) .home-char::after{opacity:1;animation:none}
+html:not(.js) :is(.home-services,.home-process,.home-about){--m:1;--e:1;transition:none}
+html:not(.js) :is(.home-step,.home-project-copy,.home-project-media img){opacity:1;transform:none}
+html:not(.js) .home-about-body{height:auto;align-content:start}
+html:not(.js) .postal{display:none}
+html:not(.js) .home-closing-direct{display:flex}
+@media(max-width:1000px){
+  /* en mobile las secciones de varios paneles van una debajo de la otra, con el alto de su contenido */
+  html:not(.js) .home-screen:not(.home-hero){height:auto;min-height:100svh}
+  html:not(.js) :is(.home-about,.home-process){display:block}
+  html:not(.js) .home-panel{width:auto;height:auto}
+  html:not(.js) .home-about-intro{min-height:60svh;padding:120px var(--gutter) 24px}
+  html:not(.js) .home-about-body{padding:0 var(--gutter) 90px;opacity:1}
+  html:not(.js) .home-process .home-section-head{width:auto;padding-bottom:32px}
+  html:not(.js) .home-steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:28px 0;padding:0 var(--gutter) 90px}
+  html:not(.js) .home-step{width:auto}
+  /* servicios: el título y las tarjetas en grilla, sin cruzar */
+  html:not(.js) .home-services .home-pin{display:flex;flex-direction:column;align-items:center;gap:28px;height:auto;padding:120px var(--gutter) 90px;overflow:visible}
+  html:not(.js) .home-services-title{position:relative;inset:auto;font-size:min(12vw,64px)}
+  html:not(.js) .home-services-note{position:static;transform:none}
+  html:not(.js) .home-slides{position:static;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:24px;width:100%;pointer-events:auto}
+  html:not(.js) .home-slide{position:static;width:auto;transform:none}
+  html:not(.js) .home-closing{padding-bottom:110px}
 }

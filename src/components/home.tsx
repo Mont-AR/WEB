@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 import { ContactForm } from "./contact-form";
 import { HomeHeroScene } from "./home-hero-scene";
 import { HomeProjectVideo } from "./home-project-video";
@@ -34,7 +34,8 @@ function Chat() {
 }
 
 /** Frase que se entinta letra por letra sola, al llegar a su pantalla (home-scroll.tsx le pone
- * data-on); visible para lectores como texto entero. */
+ * data-on). El texto está una sola vez, entero, en .sr-only (lectores de pantalla y bots); las letras
+ * animadas se pintan con CSS desde data-c, así no se duplica en el HTML. */
 function RevealText({ text, className = "" }: { text: string; className?: string }) {
   let index = 0;
   const words = text.split(" ");
@@ -43,7 +44,7 @@ function RevealText({ text, className = "" }: { text: string; className?: string
     <span className="sr-only">{text}</span>
     <span aria-hidden="true">
       {words.map((word, w) => <span key={w}><span className="home-word">
-        {[...word].map((char) => <span key={index} className="home-char" data-c={char} style={vars({ "--i": index++ })}>{char}</span>)}
+        {[...word].map((char) => <span key={index} className="home-char" data-c={char} style={vars({ "--i": index++ })}/>)}
       </span>{w < words.length - 1 && " "}</span>)}
     </span>
   </p>;
@@ -56,7 +57,8 @@ const TYPE_SPEED = { note: 32, title: 70, sub: 45 };
 
 /** Tipeo como el diálogo de un jueguito: cada letra aparece de golpe en su momento (--d) con un
  * cursor de bloque detrás que se queda titilando al final. Comparte el reloj entre bloques para que
- * se escriban uno tras otro; es CSS puro, así que arranca con el primer pintado, sin esperar a JS. */
+ * se escriban uno tras otro; es CSS puro, así que arranca con el primer pintado, sin esperar a JS.
+ * Como en RevealText, el texto legible va una sola vez en .sr-only y las letras se pintan desde data-c. */
 function createTypewriter() {
   let at = TYPE_START;
   return (text: string, speed: number, end = false) => {
@@ -70,7 +72,7 @@ function createTypewriter() {
         const isLast = i === chars.length - 1;
         if (isLast) at += TYPE_PAUSE;
         // el cursor de la última letra de un bloque espera la pausa; el del final queda titilando
-        return <span key={i} className={`home-type${isLast && end ? " home-type-end" : ""}`} style={vars({ "--d": d, "--s": isLast ? speed + TYPE_PAUSE : speed })}>{char}</span>;
+        return <span key={i} className={`home-type${isLast && end ? " home-type-end" : ""}`} data-c={char} style={vars({ "--d": d, "--s": isLast ? speed + TYPE_PAUSE : speed })}/>;
       })}</span>
     </>;
   };
@@ -113,7 +115,7 @@ export function Home() {
             <div className="home-hero-copy">
               <p className="home-note">{type(hero.kicker, TYPE_SPEED.note)}</p>
               <h1 id="home-title" className="home-display">
-                {titleWords.map((word) => <span key={word} className="home-line">{type(word, TYPE_SPEED.title)}</span>)}
+                {titleWords.map((word, w) => <Fragment key={word}>{w > 0 && " "}<span className="home-line">{type(word, TYPE_SPEED.title)}</span></Fragment>)}
               </h1>
               <p className="home-hero-sub">{type(heroContent.subtitle, TYPE_SPEED.sub, true)}</p>
             </div>
@@ -127,7 +129,7 @@ export function Home() {
           <section id="servicios" className="home-screen home-services" data-screen data-hold={(services.length + 1) * .55} data-hold-wide="0" data-reveal aria-labelledby="servicios-title" style={vars({ "--n": services.length })}>
             <div className="home-pin">
               <h2 id="servicios-title" className="home-display home-services-title">
-                {servicesWords.map((word) => <span key={word} className="home-line">{word}</span>)}
+                {servicesWords.map((word, w) => <Fragment key={word}>{w > 0 && " "}<span className="home-line">{word}</span></Fragment>)}
               </h2>
               <p className="home-note home-services-note">{servicios.kicker}</p>
               <ul className="home-slides">
@@ -202,6 +204,11 @@ export function Home() {
               <h2 id="cierre-title" className="home-display home-display-md">{cierre.titulo}</h2>
               <p className="home-lead">{cierre.descripcion}</p>
               <ContactForm idPrefix="home-" icon={<Arrow/>}/>
+              {/* sin JS el formulario no puede enviar: en su lugar, los contactos directos (home.css) */}
+              <p className="home-closing-direct">
+                <a className="home-button" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><Chat/> {content.interfaz.whatsapp}</a>
+                <a href={`mailto:${content.contacto.email}`}>{content.contacto.email}</a>
+              </p>
             </div>
           </section>
 
