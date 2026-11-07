@@ -781,6 +781,8 @@ export function createHeroSunset() {
  * `setPan(px)` mueve la cámara a la derecha según el desplazamiento horizontal del contenido (px CSS).
  * `setRoadEnd(px)` termina el camino en esa x de la pista (px CSS), con un buzón que dice `mailLabel`.
  * `setMail(sent)` levanta o baja la banderita y `mailPoint()` da la puerta del buzón en px CSS del escenario.
+ * @param {HTMLElement} el
+ * @param {{ reducedMotion?: boolean, mailLabel?: string }} [options]
  */
 export function mountHero(el, { reducedMotion, mailLabel = "" } = {}) {
   const reduced = reducedMotion ?? window.matchMedia("(prefers-reduced-motion: reduce)").matches;

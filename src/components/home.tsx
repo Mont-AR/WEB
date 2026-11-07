@@ -5,6 +5,7 @@ import { HomeHeroScene } from "./home-hero-scene";
 import { HomeProjectVideo } from "./home-project-video";
 import { HomeScroll } from "./home-scroll";
 import { HomeSelect } from "./home-select";
+import { MotionToggle } from "./motion-toggle";
 import { choiceIcons, content, heroContent, homeContent, serviceLabel, servicesContent, whatsappUrl } from "@/lib/content";
 
 // Página de inicio: pantallas una al lado de la otra, como niveles de un jueguito (tipografía y
@@ -100,6 +101,8 @@ export function Home() {
     </header>
     {/* abajo a la derecha, fijo en todas las pantallas */}
     <a className="home-button home-button-small home-dock" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><Chat/> {content.interfaz.whatsapp}</a>
+    {/* abajo a la izquierda, fijo: encender o apagar las animaciones */}
+    <MotionToggle/>
 
     {/* El scroll vertical mueve la pista hacia la derecha (home-scroll.tsx); el paisaje queda detrás. */}
     <div className="home-rail">

@@ -3,6 +3,7 @@ import "@fontsource/press-start-2p/400.css";
 import "./globals.css";
 import { SiteCursor } from "@/components/site-cursor";
 import { content } from "@/lib/content";
+import { motionFlag } from "@/lib/motion";
 import { siteDescription, siteName, siteTitle, siteUrl, ogImage } from "@/lib/site";
 import { structuredData } from "@/lib/structured-data";
 
@@ -66,7 +67,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es-AR" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: jsFlag }}/>
+        <script dangerouslySetInnerHTML={{ __html: `${jsFlag};${motionFlag}` }}/>
       </head>
       <body>
         {children}

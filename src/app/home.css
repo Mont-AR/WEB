@@ -35,6 +35,8 @@
    el paisaje está listo; mientras tanto el tipeo del hero espera */
 .home-loader{font-family:var(--pixel);transition:opacity .45s steps(5),visibility 0s .45s}
 .home[data-ready] .home-loader{opacity:0;visibility:hidden}
+/* con las animaciones apagadas no se carga el paisaje: nada que esperar */
+html.calm .home-loader{display:none}
 .home:not([data-ready]) .home-type,.home:not([data-ready]) .home-type::after{animation-play-state:paused}
 
 /* ---------------------------------------------------------------- header */
@@ -47,6 +49,16 @@
 /* WhatsApp, fijo abajo a la derecha (donde iría un footer) */
 .home-dock{position:fixed;z-index:20;right:clamp(24px,4.3vw,76px);bottom:calc(clamp(18px,2.4vw,36px) + env(safe-area-inset-bottom,0px));margin:0}
 
+/* toggle de animaciones, fijo abajo a la izquierda (motion-toggle.tsx), también sobre la pantalla de carga
+   (z-index 30): interruptor 8-bit; encendido en cian con la perilla a la derecha, apagado violeta a la izquierda */
+.motion-toggle{position:fixed;z-index:31;left:clamp(24px,4.3vw,76px);bottom:calc(clamp(18px,2.4vw,36px) + env(safe-area-inset-bottom,0px));display:inline-flex;align-items:center;gap:12px;margin:0;padding:8px 0;border:0;background:none;color:var(--muted);font-family:var(--pixel);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+.motion-toggle:hover{color:var(--cream)}
+.motion-toggle:focus-visible{outline:3px dashed var(--gold);outline-offset:6px}
+.motion-toggle-track{position:relative;width:34px;height:16px;background:var(--cyan);box-shadow:0 -3px 0 0 var(--mint),0 3px 0 0 var(--mint),-3px 0 0 0 var(--mint),3px 0 0 0 var(--mint),3px 3px 0 3px #073f6d}
+.motion-toggle-knob{position:absolute;top:2px;left:2px;width:12px;height:12px;background:#09234a;transform:translateX(18px);transition:transform .12s steps(2)}
+html.calm .motion-toggle-track{background:var(--dim);box-shadow:0 -3px 0 0 #3b2f8a,0 3px 0 0 #3b2f8a,-3px 0 0 0 #3b2f8a,3px 0 0 0 #3b2f8a,3px 3px 0 3px #0d0a3d}
+html.calm .motion-toggle-knob{background:var(--muted);transform:none;transition:none}
+
 /* ---------------------------------------------------------------- riel horizontal (home-scroll.tsx)
    Sin JS la pista se recorre con scroll horizontal nativo; con JS (.is-rail) el escenario queda fijo y
    el scroll vertical la mueve. Cada pantalla mide lo que la vista (--vw, sin la barra de scroll). */
@@ -57,6 +69,10 @@
 .home.is-rail .home-stage{position:sticky;top:0;overflow:hidden}
 .home-backdrop{position:absolute;inset:0;pointer-events:none}
 .home-hero-scene{position:absolute;inset:0;overflow:hidden;background:#071139}
+/* animaciones apagadas: el paisaje no se carga y queda este fondo liso */
+/* al encender las animaciones el paisaje aparece con un fundido */
+.home-hero-scene canvas{animation:hero-in .6s ease}
+@keyframes hero-in{from{opacity:0}}
 /* fuera del hero el paisaje queda de fondo, oscurecido para leer; abajo menos, para que se vea el camino.
    En la última pantalla (--xe) vuelve el atardecer: la postal tiene su propio fondo y el camino termina a la vista */
 .home-scrim{position:absolute;inset:0;background:linear-gradient(180deg,var(--night) 0 70%,rgba(7,11,57,.35) 86%,rgba(7,11,57,.15));opacity:calc(clamp(0,calc(var(--xr,0) * .9),.62) * (1 - var(--xe,0) * .75))}
@@ -195,7 +211,7 @@
 @media(min-width:1001px){
   .home-about{--m:0;--e:0;transition:--m .8s cubic-bezier(.65,0,.35,1) 1.7s,--e .5s ease-out 2.4s;display:block;width:var(--vw,100vw)}
   .home-about .home-about-intro{transform:translateY(calc(var(--m) * -25svh)) scale(calc(1 - var(--m) * .38))}
-  .home-about-body{position:absolute;top:47svh;left:50%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;width:min(1040px,calc(100% - 2 * var(--gutter)));padding:0;opacity:var(--e);transform:translate(-50%,calc((1 - var(--e)) * 40px))}
+  .home-about-body{position:absolute;top:47svh;left:50%;height:auto;display:grid;align-content:start;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;width:min(calc(100% - 2 * var(--gutter)),max(640px,calc(min(1200px,88vw) * .62)));padding:0;opacity:var(--e);transform:translate(-50%,calc((1 - var(--e)) * 40px))}
   .home-about-body .home-about-links{grid-column:1/-1}
 }
 
@@ -250,6 +266,9 @@
 @media(max-width:700px){
   .home-header{padding:calc(25px + env(safe-area-inset-top,0px)) 20px 25px}
   .home-dock{right:20px}
+  /* en mobile solo el interruptor: el texto queda para lectores de pantalla */
+  .motion-toggle{left:20px}
+  .motion-toggle-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
   .home-hero-copy h1{font-size:min(7vw,9vh)}
   .home-slide{--spread:.3}
   .home-services-title{font-size:min(14vw,18vh)}
@@ -261,24 +280,25 @@
   .home-project-copy{gap:16px}
 }
 
-/* ---------------------------------------------------------------- movimiento reducido: lectura estática */
-@media(prefers-reduced-motion:reduce){
-  .home-scroll-cue i{animation:none}
-  .home-project-media img,.home-project-copy,.home-step,.home-about-body{transform:none;opacity:1}
-  .home-services,.home-process,.home-about{--m:1;--e:1;transition:none}
-  .home-slide-card::before,.home-slide-card::after,.home-slide-window img{animation:none!important}
-  .home-char::after{opacity:1;animation:none}
-  .home-type{visibility:visible;animation:none}
-  .home-type::after{display:none}
-}
-@media(prefers-reduced-motion:reduce) and (max-width:1000px){
+/* ---------------------------------------------------------------- animaciones apagadas: lectura estática.
+   html.calm lo pone el toggle (motion-toggle.tsx) o, por defecto, "reducir movimiento" del sistema (lib/motion.ts) */
+html.calm .home-scroll-cue i{animation:none}
+html.calm :is(.home-project-media img,.home-project-copy,.home-step){transform:none;opacity:1}
+/* sobre mí: en desktop --e:1 ya lo deja en su lugar (centrado con translate), solo falta la opacidad en mobile */
+html.calm .home-about-body{opacity:1}
+html.calm :is(.home-services,.home-process,.home-about){--m:1;--e:1;transition:none}
+html.calm .home-slide-card::before,html.calm .home-slide-card::after,html.calm .home-slide-window img,html.calm .home-button:hover::after{animation:none!important}
+html.calm .home-char::after{opacity:1;animation:none}
+html.calm .home-type{visibility:visible;animation:none}
+html.calm .home-type::after{display:none}
+@media(max-width:1000px){
   /* servicios en mobile: las tarjetas en fila, sin cruzar */
-  .home-services{width:auto}
-  .home-services .home-pin{display:flex;align-items:center;gap:40px;padding:110px var(--gutter) 60px;overflow:visible}
-  .home-services-title{position:relative;inset:auto;flex:none;font-size:min(7vw,12vh)}
-  .home-services-note{position:absolute;top:max(110px,14vh);left:var(--gutter);transform:none}
-  .home-slides{position:relative;inset:auto;display:flex;gap:30px;flex:none}
-  .home-slide{position:relative;top:auto;left:auto;flex:none;width:280px;transform:rotate(calc(var(--r) * .3))}
+  html.calm .home-services{width:auto}
+  html.calm .home-services .home-pin{display:flex;align-items:center;gap:40px;padding:110px var(--gutter) 60px;overflow:visible}
+  html.calm .home-services-title{position:relative;inset:auto;flex:none;font-size:min(7vw,12vh)}
+  html.calm .home-services-note{position:absolute;top:max(110px,14vh);left:var(--gutter);transform:none}
+  html.calm .home-slides{position:relative;inset:auto;display:flex;gap:30px;flex:none}
+  html.calm .home-slide{position:relative;top:auto;left:auto;flex:none;width:280px;transform:rotate(calc(var(--r) * .3))}
 }
 
 /* ---------------------------------------------------------------- sin JS (html sin .js, ver layout.tsx):
@@ -288,7 +308,7 @@ html:not(.js) .home{--vw:100%;overflow-x:clip}
 html:not(.js) .home-stage{height:auto;overflow:visible}
 html:not(.js) .home-track{display:block;width:auto;height:auto;transform:none}
 html:not(.js) .home-screen{width:auto;height:100svh}
-html:not(.js) .home-scroll-cue{display:none}
+html:not(.js) :is(.home-scroll-cue,.motion-toggle){display:none}
 html:not(.js) .home-type{visibility:visible;animation:none}
 html:not(.js) .home-type::after{display:none}
 html:not(.js) .home-char::after{opacity:1;animation:none}

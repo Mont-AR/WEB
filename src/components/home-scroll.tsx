@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isCalm } from "@/lib/motion";
 
 // Scroll horizontal del inicio: el scroll vertical (rueda, dedo, teclado) mueve la pista de pantallas
 // hacia la derecha. La altura del riel se calcula para que cada px de scroll sea un px de avance; las
@@ -8,14 +9,16 @@ import { useEffect } from "react";
 // con su borde izquierdo alineado y reciben el progreso del tramo en --p. Los [data-scene] reciben
 // --p según su posición horizontal: 0 cuando asoman por la derecha, 1 cuando salen por la
 // izquierda. Los [data-reveal] reciben data-on (una sola vez) cuando ocupan la mayor parte de la vista,
-// para animaciones que corren solas (el entintado de "sobre mí", la entrada del contenido en desktop). Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
+// para animaciones que corren solas (el entintado de "sobre mí", la entrada del contenido en desktop).
+// Además publica el avance para el parallax del paisaje (evento "home:pan", px) y para el
 // CSS (--xr, en pantallas; --xe, de 0 a 1 al entrar la última pantalla). También dice dónde termina el
 // camino del paisaje (evento "home:road-end", px de la pista): adelante de la última pantalla.
-// Transiciones: entre pantallas no se queda a mitad de camino. Apenas la vista empieza a moverse
-// entre dos puntos de anclaje (el comienzo de cada pantalla y, en secciones más anchas que la vista,
-// de cada panel), completa sola el pase en la
-// dirección del scroll, como el cambio de pantalla de un juego; mientras dura (y mientras siga la
-// inercia de la rueda) el scroll del usuario queda en pausa.
+// Transiciones: con las animaciones encendidas, entre pantallas no se queda a mitad de camino. Apenas
+// la vista empieza a moverse entre dos puntos de anclaje (el comienzo de cada pantalla y, en secciones
+// más anchas que la vista, de cada panel), completa sola el pase en la dirección del scroll, como el
+// cambio de pantalla de un juego; mientras dura (y mientras siga la inercia de la rueda) el scroll del
+// usuario queda en pausa. Con las animaciones apagadas (html.calm, lib/motion.ts) el scroll es
+// continuo: la vista avanza lo que el usuario scrollea.
 // Con el teclado, el foco dentro de la pista lleva el scroll hasta la pantalla de ese elemento; los
 // enlaces a una pantalla (#contact) también, con scroll suave.
 // Sin JS (html sin .js, ver layout.tsx) el inicio se muestra estático y apilado (home.css, "sin JS").
@@ -36,7 +39,6 @@ export function HomeScroll() {
     const scenes = [...track.querySelectorAll<HTMLElement>("[data-scene]")];
     let reveals = [...track.querySelectorAll<HTMLElement>("[data-reveal]")];
     const last = new Map<HTMLElement, string>();
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let steps: Step[] = [], snaps: number[] = [], total = 0, frame = 0, x = -1;
     let auto = 0, quietUntil = 0, lastY = window.scrollY, dir = 1;
     // alto estable de la pantalla (lvh, con las barras del navegador escondidas): en mobile las barras
@@ -95,7 +97,7 @@ export function HomeScroll() {
     };
     const animateTo = (top: number, ms: number) => {
       cancelAnimationFrame(auto);
-      if (calm || ms <= 0) { auto = 0; quietUntil = performance.now() + QUIET_MS; window.scrollTo({ top, behavior: "instant" }); return; }
+      if (isCalm() || ms <= 0) { auto = 0; quietUntil = performance.now() + QUIET_MS; window.scrollTo({ top, behavior: "instant" }); return; }
       const from = window.scrollY, t0 = performance.now();
       const tick = (now: number) => {
         const k = Math.min(1, (now - t0) / ms);
@@ -130,21 +132,21 @@ export function HomeScroll() {
       }
       if (reveals.length) reveals = reveals.filter((el) => {
         const r = el.getBoundingClientRect();
-        if (Math.min(r.right, vw) - Math.max(r.left, 0) < Math.min(r.width, vw) * .8) return true;
+        if (Math.min(r.right, vw) - Math.max(r.left, 0) < Math.min(r.width, vw) * (isCalm() ? .6 : .8)) return true;
         el.setAttribute("data-on", "");
         return false;
       });
       // ¿la vista quedó entre dos anclajes? completar el pase en la dirección del scroll
       const sy = window.scrollY;
       if (sy !== lastY) { dir = sy > lastY ? 1 : -1; lastY = sy; }
-      if (auto || performance.now() < quietUntil || snaps.some((v) => Math.abs(v - x) <= 1)) return;
+      if (isCalm() || auto || performance.now() < quietUntil || snaps.some((v) => Math.abs(v - x) <= 1)) return;
       const next = snaps.findIndex((v) => v > x);
       if (next <= 0) return;
       const target = dir > 0 ? snaps[next] : snaps[next - 1];
       animateTo(rail.offsetTop + yAt(target, dir), Math.min(900, Math.max(280, Math.abs(target - x) / vw * PASS_MS)));
     };
     // durante un pase (y su inercia) la rueda, el dedo y las teclas de scroll no mueven la página
-    const busy = () => auto !== 0 || performance.now() < quietUntil;
+    const busy = () => !isCalm() && (auto !== 0 || performance.now() < quietUntil);
     const onWheel = (event: WheelEvent) => { if (!busy()) return; event.preventDefault(); if (!auto) quietUntil = performance.now() + QUIET_MS; };
     const onTouch = (event: TouchEvent) => { if (busy()) event.preventDefault(); };
     const onKey = (event: KeyboardEvent) => { if (busy() && ["ArrowDown", "ArrowUp", "PageDown", "PageUp", " ", "Home", "End"].includes(event.key) && !(event.target as HTMLElement).closest("input, textarea, select")) event.preventDefault(); };

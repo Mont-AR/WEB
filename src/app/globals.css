@@ -33,13 +33,15 @@ button{cursor:pointer}
 .form-status{grid-column:1/-1;margin:4px 0 0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.45;color:#b6fff4}
 @media(max-width:900px){.project-form{grid-template-columns:1fr}}
 @media(max-width:700px){.brand{font-size:16px}.project-form{padding:12px;gap:6px}.form-col{gap:5px}.project-form textarea{min-height:58px}.project-form label{font-size:9px}.contact-fields{grid-template-columns:105px minmax(0,1fr);gap:7px}.project-form input,.project-form select,.project-form textarea{font-size:13px;padding:8px}}
-@media(prefers-reduced-motion:reduce){.loader-sun,.loader-traveler,.loader-dots{animation:none}}
-/* puntero animado de todo el sitio (site-cursor.tsx): solo con mouse; en campos de texto, el del sistema */
-.has-cursor,.has-cursor *{cursor:none!important}
-.has-cursor :is(input:not([type=checkbox],[type=radio],[type=submit],[type=button]),textarea,[contenteditable]){cursor:text!important}
+html.calm :is(.loader-sun,.loader-traveler,.loader-dots){animation:none}
+/* puntero animado de todo el sitio (site-cursor.tsx): solo con mouse; en campos de texto, el del sistema.
+   Con las animaciones apagadas (html.calm, lib/motion.ts) vuelve el puntero del sistema */
+html.has-cursor:not(.calm),html.has-cursor:not(.calm) *{cursor:none!important}
+html.has-cursor:not(.calm) :is(input:not([type=checkbox],[type=radio],[type=submit],[type=button]),textarea,[contenteditable]){cursor:text!important}
 .site-cursor{position:fixed;z-index:2147483647;top:0;left:0;pointer-events:none;opacity:0;will-change:transform}
 .site-cursor[data-visible]{opacity:1}
 .site-cursor[data-kind=text]{opacity:0}
+html.calm :is(.site-cursor,.cursor-bit){display:none}
 .site-cursor svg{position:absolute;top:0;left:0;display:none;filter:drop-shadow(2px 2px 0 rgba(3,4,31,.55))}
 .site-cursor:not([data-kind]) .cursor-arrow,.site-cursor[data-kind=arrow] .cursor-arrow,.site-cursor[data-kind=info] .cursor-info{display:block}
 .site-cursor[data-kind=link] .cursor-hand{display:block;left:-9px}

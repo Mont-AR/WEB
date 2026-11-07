@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isCalm } from "@/lib/motion";
 
 // Puntero animado de todo el sitio, en pixel art: flecha, mano sobre lo que se puede clickear y flecha
 // con una "i" sobre lo que solo muestra información (las tarjetas de "¿Qué hago?"). Deja una estela
 // de píxeles al moverse y una chispa al hacer clic. Solo con mouse (pointer: fine); en los campos de
-// texto vuelve el cursor del sistema. Con movimiento reducido no hay estela ni chispas.
+// texto vuelve el cursor del sistema. Con las animaciones apagadas (lib/motion.ts) vuelve el puntero del sistema (globals.css).
 const ARROW = [
   "B.........", "BB........", "BWB.......", "BWWB......", "BWWWB.....", "BWWWWB....", "BWWWWWB...", "BWWWWWWB..",
   "BWWWWWWWB.", "BWWWWWBBBB", "BWWBWWB...", "BWB.BWWB..", "BB..BWWB..", "B....BWWB.", ".....BWWB.", "......BB..",
@@ -30,7 +31,6 @@ export function SiteCursor() {
   useEffect(() => {
     const cursor = ref.current;
     if (!cursor || !window.matchMedia("(pointer: fine)").matches) return;
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const root = document.documentElement;
     root.classList.add("has-cursor");
     const pool = Array.from({ length: 10 }, () => { const d = document.createElement("i"); d.className = "cursor-bit"; d.setAttribute("aria-hidden", "true"); document.body.appendChild(d); return d; });
@@ -55,14 +55,14 @@ export function SiteCursor() {
       cursor.dataset.kind = kindOf(event.target as Element);
       cursor.dataset.visible = "";
       const now = performance.now();
-      if (!calm && now - lastBit > 34 && Math.hypot(x - lastX, y - lastY) > 6) {
+      if (!isCalm() && now - lastBit > 34 && Math.hypot(x - lastX, y - lastY) > 6) {
         lastBit = now;
         spark(x + 4, y + 4, (lastX - x) * .3, (lastY - y) * .3 + 6, TRAIL[Math.floor(now / 34) % TRAIL.length], 420);
       }
       lastX = x; lastY = y;
     };
     const click = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse" || calm) return;
+      if (event.pointerType !== "mouse" || isCalm()) return;
       for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; spark(event.clientX - 2, event.clientY - 2, Math.cos(a) * 18, Math.sin(a) * 18, TRAIL[i % TRAIL.length], 360); }
     };
     const leave = () => { delete cursor.dataset.visible; };

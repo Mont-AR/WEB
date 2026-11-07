@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { isCalm } from "@/lib/motion";
 import { content, projectContent, serviceLabel, servicesContent, startingContent } from "@/lib/content";
 
 const FLIGHT_MS = 900;
@@ -25,12 +26,12 @@ export function ContactForm({ idPrefix = "", icon }: { idPrefix?: string; icon?:
 
   useEffect(() => { if (sent) againRef.current?.focus({ preventScroll: true }); }, [sent]);
 
-  // lleva la postal hasta la puerta del buzón; sin paisaje o con movimiento reducido, no hay vuelo
+  // lleva la postal hasta la puerta del buzón; sin paisaje o con las animaciones apagadas, no hay vuelo
   const flyToMailbox = async () => {
     const form = formRef.current, stage = form?.closest(".home-stage");
     const point: { x?: number; y?: number } = {};
     window.dispatchEvent(new CustomEvent("home:mail-point", { detail: point }));
-    if (!form || !stage || point.x === undefined || point.y === undefined || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!form || !stage || point.x === undefined || point.y === undefined || isCalm()) return;
     const box = form.getBoundingClientRect(), origin = stage.getBoundingClientRect();
     const dx = origin.left + point.x - (box.left + box.width / 2), dy = origin.top + point.y - (box.top + box.height / 2);
     flight.current = form.animate(
