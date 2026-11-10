@@ -11,10 +11,9 @@
 //     como versiones de prueba, cada una con su URL de preview, sin tocar producción. Su comando de
 //     deploy: `npx wrangler versions upload`.
 //
-// Secretos: la clave de Resend y el remitente NO van acá. RESEND_API_KEY y CONTACT_FROM_EMAIL se cargan
-//   en Workers & Pages → montar-web → Settings → Variables and Secrets, como tipo "Secret" (valen para
-//   producción y previews),
-//   o con `npx wrangler secret put NOMBRE`. En local: .dev.vars o .env (los dos están en .gitignore).
+// Secretos: la clave de Resend NO va acá. RESEND_API_KEY se carga en Workers & Pages → montar-web →
+//   Settings → Variables and Secrets, como tipo "Secret" (vale para producción y previews), o con
+//   `npx wrangler secret put RESEND_API_KEY`. (El remitente es fijo, en worker/contact.ts.) En local: .dev.vars o .env (los dos están en .gitignore).
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // nombre del Worker en Cloudflare: tiene que ser el mismo que el del proyecto en el panel

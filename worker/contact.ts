@@ -3,8 +3,8 @@
 //
 // Variables (Cloudflare → Workers & Pages → montar-web → Settings → Variables and Secrets):
 //   RESEND_API_KEY      secreto: la clave de Resend
-//   CONTACT_FROM_EMAIL  secreto: remitente de un dominio verificado en Resend, p. ej. "Mont.AR <contacto@montivero.ar>"
 //   CONTACT_TO_EMAIL    a quién llega el aviso (en wrangler.jsonc; si falta, el mail de contacto de content.js)
+// El remitente es fijo (FROM): una dirección del dominio verificado en Resend.
 // Probar en local: `npm run cf:dev`, con esas variables en .dev.vars (o .env).
 import { content, projectContent } from "../src/content.js";
 import { formatProjectMessage, validateContactSubmission, type ContactSubmission } from "../src/lib/contact";
@@ -13,10 +13,10 @@ import { sendResendEmail } from "../src/lib/resend";
 /** Variables y secretos del Worker en Cloudflare. */
 export type ContactEnv = {
 	RESEND_API_KEY?: string;
-	CONTACT_FROM_EMAIL?: string;
 	CONTACT_TO_EMAIL?: string;
 };
 
+const FROM = `"${content.marca.nombre}" <contacto@${content.dominio}>`;
 const MAX_BODY = 8192;
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 const invalid = () => json({ error: "Revisá los datos del formulario e intentá de nuevo." }, 400);
@@ -27,16 +27,14 @@ type Delivery = "sent" | "not-configured" | "failed";
 /** Manda el aviso de un proyecto nuevo por mail con Resend; se responde directo a quien escribió. */
 async function deliver(env: ContactEnv, submission: ContactSubmission): Promise<Delivery> {
 	const apiKey = env.RESEND_API_KEY;
-	const from = env.CONTACT_FROM_EMAIL;
-	if (!apiKey || !from) {
-		// solo los nombres (nunca los valores): aparece en Workers Logs
-		const missing = [!apiKey && "RESEND_API_KEY", !from && "CONTACT_FROM_EMAIL"].filter(Boolean).join(", ");
-		console.error(`Formulario sin configurar: el Worker no recibe ${missing}`);
+	if (!apiKey) {
+		// solo el nombre (nunca el valor): aparece en Workers Logs
+		console.error("Formulario sin configurar: el Worker no recibe RESEND_API_KEY");
 		return "not-configured";
 	}
 	const result = await sendResendEmail({
 		apiKey,
-		from,
+		from: FROM,
 		to: env.CONTACT_TO_EMAIL || content.contacto.email,
 		subject: "Nuevo proyecto desde Mont.AR",
 		text: formatProjectMessage(submission),
