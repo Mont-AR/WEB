@@ -28,7 +28,12 @@ type Delivery = "sent" | "not-configured" | "failed";
 async function deliver(env: ContactEnv, submission: ContactSubmission): Promise<Delivery> {
 	const apiKey = env.RESEND_API_KEY;
 	const from = env.CONTACT_FROM_EMAIL;
-	if (!apiKey || !from) return "not-configured";
+	if (!apiKey || !from) {
+		// solo los nombres (nunca los valores): aparece en Workers Logs
+		const missing = [!apiKey && "RESEND_API_KEY", !from && "CONTACT_FROM_EMAIL"].filter(Boolean).join(", ");
+		console.error(`Formulario sin configurar: el Worker no recibe ${missing}`);
+		return "not-configured";
+	}
 	const result = await sendResendEmail({
 		apiKey,
 		from,
@@ -37,7 +42,8 @@ async function deliver(env: ContactEnv, submission: ContactSubmission): Promise<
 		text: formatProjectMessage(submission),
 		replyTo: submission.contactMethod === "email" ? submission.contactValue : undefined,
 	});
-	if (!result.ok) console.error("Resend no aceptó el envío:", result.status);
+	// el motivo de Resend (nunca la clave ni los datos del formulario): aparece en Workers Logs
+	if (!result.ok) console.error(`Resend no aceptó el envío (${result.status}): ${result.error || "sin detalle"}`);
 	return result.ok ? "sent" : "failed";
 }
 

@@ -12,7 +12,10 @@ export type ResendMessage = {
 	replyTo?: string;
 };
 
-/** Manda el mail. `ok` es true solo si Resend lo aceptó y devolvió su id. */
+/**
+ * Manda el mail. `ok` es true solo si Resend lo aceptó y devolvió su id. Si lo rechaza, `error` trae el
+ * motivo que da Resend (p. ej. "validation_error: The montivero.ar domain is not verified"), para los logs.
+ */
 export async function sendResendEmail(message: ResendMessage, transport: typeof fetch = fetch) {
 	const response = await transport("https://api.resend.com/emails", {
 		method: "POST",
@@ -29,7 +32,11 @@ export async function sendResendEmail(message: ResendMessage, transport: typeof 
 		}),
 		signal: AbortSignal.timeout(10000),
 	});
-	if (!response.ok) return { ok: false, status: response.status };
+	if (!response.ok) {
+		const body = (await response.json().catch(() => null)) as { name?: unknown; message?: unknown } | null;
+		const error = [body?.name, body?.message].filter((part) => typeof part === "string").join(": ");
+		return { ok: false, status: response.status, error };
+	}
 	const result = (await response.json().catch(() => null)) as { id?: unknown } | null;
 	return { ok: typeof result?.id === "string", status: response.status };
 }
