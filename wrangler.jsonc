@@ -4,7 +4,7 @@
 // - Solo /api/* pasa por el Worker (worker/index.ts): /api/contact atiende el formulario (worker/contact.ts).
 // - Probar todo junto en local: `npm run cf:dev`. Deployar a mano: `npm run cf:deploy`.
 //
-// Deploy desde git (Workers & Pages → montar → Settings → Build):
+// Deploy desde git (Workers & Pages → montar-web → Settings → Build):
 //   - Build command: `npm run build` · Deploy command: `npx wrangler deploy`
 //   - Production branch: la que publica montivero.ar (p. ej. main).
 //   - Non-production branch builds: activarlo para que las demás branches (astro, pruebas...) se suban
@@ -12,12 +12,13 @@
 //     deploy: `npx wrangler versions upload`.
 //
 // Secretos: la clave de Resend y el remitente NO van acá. RESEND_API_KEY y CONTACT_FROM_EMAIL se cargan
-//   en Workers & Pages → montar → Settings → Variables and Secrets (valen para producción y previews),
+//   en Workers & Pages → montar-web → Settings → Variables and Secrets, como tipo "Secret" (valen para
+//   producción y previews),
 //   o con `npx wrangler secret put NOMBRE`. En local: .dev.vars o .env (los dos están en .gitignore).
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // nombre del Worker en Cloudflare: tiene que ser el mismo que el del proyecto en el panel
-  "name": "montar",
+  "name": "montar-web",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-11-01",
 
@@ -34,6 +35,10 @@
   "vars": {
     "CONTACT_TO_EMAIL": "desarrollo@montivero.ar"
   },
+
+  // logs del Worker en el panel (Workers Logs): ahí aparecen los errores del formulario, como el código
+  // con el que Resend rechazó un envío. No guardan los datos que escribe la gente.
+  "observability": { "enabled": true },
 
   // URLs de preview para las versiones de las branches que no son producción
   "preview_urls": true,

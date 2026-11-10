@@ -1,7 +1,7 @@
 // POST /api/contact: el formulario del cierre (lo llama worker/index.ts). Valida los datos
 // (src/lib/contact.ts) y manda el aviso por mail con Resend (src/lib/resend.ts).
 //
-// Variables (Cloudflare → Workers & Pages → montar → Settings → Variables and Secrets):
+// Variables (Cloudflare → Workers & Pages → montar-web → Settings → Variables and Secrets):
 //   RESEND_API_KEY      secreto: la clave de Resend
 //   CONTACT_FROM_EMAIL  secreto: remitente de un dominio verificado en Resend, p. ej. "Mont.AR <contacto@montivero.ar>"
 //   CONTACT_TO_EMAIL    a quién llega el aviso (en wrangler.jsonc; si falta, el mail de contacto de content.js)
