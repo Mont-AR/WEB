@@ -1,0 +1,190 @@
+---
+import Arrow from "./Arrow.astro";
+import Typed from "./Typed.astro";
+import { content, homeContent, projectContent, serviceLabel, servicesContent, startingContent, whatsappUrl } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { cierre } = homeContent;
+const form = projectContent.form;
+const clock = createClock();
+const kicker = clock.type(cierre.kicker, TYPE_SPEED.note);
+const title = clock.type(cierre.titulo, TYPE_SPEED.display);
+---
+
+<!-- El formulario manda POST /api/contact (functions/api/contact.ts). En desktop, como las otras secciones:
+     el título se tipea grande, se achica y sube (stage-head), y la postal queda centrada debajo (stage-body). -->
+<section id="contact" aria-labelledby="cierre-title" data-reveal style={`--after:${clock.end}`} class="section stage gap-3 pb-24">
+	<header class="stage-head grid gap-3 lg:gap-5">
+		<p class="note"><Typed typed={kicker} /></p>
+		<h2 id="cierre-title" class="display display-md stage-title" style={`--chars:${[...title.text].length}`}><Typed typed={title} /></h2>
+		<p class="lead enter lg:max-w-none lg:whitespace-nowrap">{cierre.descripcion}</p>
+	</header>
+
+	<div class="stage-body grid justify-items-center" style="--body-w:min(42rem, calc(100% - 2 * var(--gutter)))">
+
+	<!-- postal en una columna, como WEB en mobile: destinatario, datos, mensaje y Enviar. Al enviarse, en su
+	     lugar queda el aviso de gracias (postal-sent), con el mismo tamaño -->
+	<div class="postal enter mt-2 w-full lg:mt-0" style="--i:1">
+	<form
+		id="contact-form"
+		class="pixel-card"
+		novalidate
+		data-submit={form.submit}
+		data-submitting={form.submitting}
+		data-error={form.error}
+	>
+		<div class="mb-0.5 flex items-start justify-between gap-3">
+			<p class="m-0 min-w-0 text-xs leading-[1.4] wrap-anywhere text-muted">
+				<b class="block text-cream">{form.para} {content.marca.firma}</b>
+				{content.contacto.email}
+			</p>
+			<!-- estampilla: luna y montañas -->
+			<span
+				aria-hidden="true"
+				class="relative h-11.5 w-9.5 flex-none border-3 border-violet-line bg-[radial-gradient(circle_at_68%_42%,var(--color-gold)_0_14%,transparent_15%),radial-gradient(circle_at_62%_38%,#4a1f78,var(--color-night-2)_72%)] after:absolute after:inset-x-0 after:bottom-0 after:h-[45%] after:bg-[#6b3fa0] after:[clip-path:polygon(0_100%,0_62%,28%_18%,50%_58%,70%_34%,100%_72%,100%_100%)]"
+			></span>
+		</div>
+
+		<label for="contact-method" class="field-label">{form.contactMethod}</label>
+		<div class="grid grid-cols-[6rem_minmax(0,1fr)] gap-2">
+			<select id="contact-method" name="contactMethod" class="field">
+				<option value="email">{form.email}</option>
+				<option value="telefono">{form.phone}</option>
+			</select>
+			<input
+				id="contact-value"
+				name="contactValue"
+				class="field"
+				type="email"
+				autocomplete="email"
+				aria-label={form.email}
+				placeholder={form.emailPlaceholder}
+				data-email-label={form.email}
+				data-email-placeholder={form.emailPlaceholder}
+				data-phone-label={form.phone}
+				data-phone-placeholder={form.phonePlaceholder}
+				data-phone-invalid={form.phoneInvalid}
+				required
+			/>
+		</div>
+
+		<label for="service" class="field-label">{form.service}</label>
+		<select id="service" name="service" class="field" required>
+			<option value="" disabled selected>{form.choose}</option>
+			{servicesContent.list.map((value) => <option value={value}>{serviceLabel(value)}</option>)}
+		</select>
+
+		<label for="starting-point" class="field-label">{form.startingPoint}</label>
+		<select id="starting-point" name="startingPoint" class="field" required>
+			<option value="" disabled selected>{form.choose}</option>
+			{startingContent.list.map((item) => <option value={item.title}>{item.opcion}</option>)}
+		</select>
+
+		<label for="description" class="field-label">{form.description}</label>
+		<textarea id="description" name="description" class="field field-lined" placeholder={form.descriptionPlaceholder} rows="4" minlength="10" maxlength="3000" required></textarea>
+
+		<!-- campo trampa: invisible para las personas; los bots lo completan y el servidor los descarta -->
+		<div class="sr-only" aria-hidden="true">
+			<label for="website">No completar</label>
+			<input id="website" name="website" tabindex="-1" autocomplete="off" />
+		</div>
+
+		<p id="form-status" class="m-0 mt-2 text-[13px] leading-[1.45] text-[#b6fff4]" role="alert" hidden></p>
+		<button type="submit" class="btn-pixel mt-2 mr-1.75 mb-1.75 ml-0.75 min-h-10 w-[calc(100%-10px)]"><span data-label>{form.submit}</span> <Arrow /></button>
+	</form>
+	<div id="postal-sent" class="pixel-card min-h-88 content-center justify-items-start gap-6" role="status" hidden>
+		<p class="m-0 max-w-[30ch] font-pixel text-[13px] leading-[1.8] [text-shadow:2px_2px_0_var(--color-plum)]">{form.success}</p>
+		<button type="button" class="btn-pixel btn-pixel-sm" data-again>{form.otra}</button>
+	</div>
+	</div>
+
+	<!-- sin JS el formulario no puede enviar: en su lugar, los contactos directos (global.css) -->
+	<p class="contact-direct m-0 mt-2 flex-wrap items-center gap-x-7.5 gap-y-4.5 lg:justify-center">
+		<a class="link-line" href={whatsappUrl} target="_blank" rel="noopener noreferrer">{content.interfaz.whatsapp}</a>
+		<a class="link-line" href={`mailto:${content.contacto.email}`}>{content.contacto.email}</a>
+	</p>
+	</div>
+</section>
+
+<script>
+	// Mail o teléfono: cambia el tipo, el autocompletado y el texto del campo, y lo vacía.
+	const method = document.querySelector<HTMLSelectElement>("#contact-method");
+	const input = document.querySelector<HTMLInputElement>("#contact-value");
+	method?.addEventListener("change", () => {
+		if (!input) return;
+		const phone = method.value === "telefono";
+		const data = input.dataset;
+		input.type = phone ? "tel" : "email";
+		input.autocomplete = phone ? "tel" : "email";
+		input.placeholder = (phone ? data.phonePlaceholder : data.emailPlaceholder) ?? "";
+		input.setAttribute("aria-label", (phone ? data.phoneLabel : data.emailLabel) ?? "");
+		input.value = "";
+		input.setCustomValidity("");
+	});
+
+	// Teléfono: las mismas reglas que el servidor (src/lib/contact.ts): solo números, +, paréntesis, espacios,
+	// puntos y guiones, con 8 a 16 dígitos. El mail lo revisa el navegador (type="email").
+	const checkPhone = () => {
+		if (!input) return;
+		const value = input.value.trim();
+		const digits = value.replace(/\D/g, "").length;
+		const valid = method?.value !== "telefono" || !value || (/^[+\d()\s.-]+$/.test(value) && digits >= 8 && digits <= 16);
+		input.setCustomValidity(valid ? "" : input.dataset.phoneInvalid ?? "");
+	};
+	input?.addEventListener("input", checkPhone);
+
+	// Envío (contact-form.tsx de WEB): POST /api/contact con JSON. Si sale bien, la postal deja lugar al aviso
+	// de gracias y, en desktop, se levanta la banderita del buzón del paisaje (evento "site:mail"); si falla,
+	// queda todo lo escrito y el error.
+	const form = document.querySelector<HTMLFormElement>("#contact-form")!;
+	const status = document.querySelector<HTMLElement>("#form-status")!;
+	const sent = document.querySelector<HTMLElement>("#postal-sent")!;
+	const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+	const label = button.querySelector<HTMLElement>("[data-label]")!;
+	const copy = form.dataset;
+	let submitting = false;
+
+	const setStatus = (text: string) => { status.textContent = text; status.hidden = !text; };
+	const setSubmitting = (on: boolean) => {
+		submitting = on;
+		button.disabled = on;
+		label.textContent = (on ? copy.submitting : copy.submit) ?? "";
+	};
+	const mail = (on: boolean) => dispatchEvent(new CustomEvent("site:mail", { detail: on }));
+
+	form.addEventListener("submit", async (event) => {
+		event.preventDefault();
+		if (submitting) return;
+		// la validación del navegador (required, email, minlength...) marca el primer campo con problemas
+		checkPhone();
+		if (!form.reportValidity()) return;
+		const data = Object.fromEntries(new FormData(form)) as Record<string, string>;
+		setSubmitting(true);
+		setStatus("");
+		try {
+			const response = await fetch("/api/contact", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ ...data, contactValue: data.contactValue?.trim(), description: data.description?.trim() }),
+			});
+			const result = (await response.json().catch(() => null)) as { error?: string } | null;
+			if (!response.ok) throw new Error(result?.error ?? copy.error);
+			form.hidden = true;
+			sent.hidden = false;
+			form.querySelector<HTMLTextAreaElement>("#description")!.value = "";
+			sent.querySelector<HTMLButtonElement>("[data-again]")?.focus({ preventScroll: true });
+			mail(true);
+		} catch (error) {
+			setStatus(error instanceof Error && error.message ? error.message : copy.error ?? "");
+		} finally {
+			setSubmitting(false);
+		}
+	});
+
+	sent.querySelector("[data-again]")?.addEventListener("click", () => {
+		sent.hidden = true;
+		form.hidden = false;
+		form.querySelector<HTMLTextAreaElement>("#description")?.focus();
+		mail(false);
+	});
+</script>

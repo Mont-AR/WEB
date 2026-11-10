@@ -1,0 +1,203 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Services from "../components/Services.astro";
+import Projects from "../components/Projects.astro";
+import About from "../components/About.astro";
+import Process from "../components/Process.astro";
+import Contact from "../components/Contact.astro";
+import { content } from "../content.js";
+
+// Igual que en WEB: proyectos oculto por ahora (el contenido sigue en content.js → inicio.proyectos).
+const SHOW_PROJECTS = false;
+---
+
+<Layout>
+	<Header />
+	<!-- Teléfono y tablet: una columna. Desktop: una fila de pantallas; el scroll vertical mueve la pista
+	     hacia la derecha (script de abajo), como en WEB. -->
+	<main id="rail" class="rail">
+		<div class="rail-stage">
+			<!-- desktop: paisaje animado de WEB (lib/hero-sunset.js), detrás de la pista. En teléfono y tablet
+			     no se muestra y el script ni se descarga (lo carga el script de abajo solo en desktop) -->
+			<div class="rail-backdrop" aria-hidden="true">
+				<div id="scene" class="rail-scene" data-mail-label={content.marca.nombre}></div>
+				<div class="rail-scrim"></div>
+			</div>
+			<div id="track" class="rail-track">
+				<Hero />
+				<Services />
+				<Process />
+				{SHOW_PROJECTS && <Projects />}
+				<About />
+				<Contact />
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<script>
+	// Desktop: la pista queda fija en pantalla (sticky) y se desplaza en horizontal tanto como se scrollea.
+	// La altura del rail es el recorrido horizontal más una pantalla, así la barra de scroll sigue normal.
+	const rail = document.querySelector<HTMLElement>("#rail")!;
+	const track = document.querySelector<HTMLElement>("#track")!;
+	const desktop = matchMedia("(min-width: 1024px)");
+	const calm = matchMedia("(prefers-reduced-motion: reduce)");
+	let distance = 0;
+	let frame = 0;
+
+	// Alto de cada título ya achicado (--m = 1), para centrar el contenido en la pantalla sin taparlo
+	// (.stage-body en global.css). Se mide forzando un instante el estado final, sin transición.
+	const measureHeads = () => {
+		for (const stage of track.querySelectorAll<HTMLElement>(".stage")) {
+			const head = stage.querySelector<HTMLElement>(".stage-head");
+			if (!head) continue;
+			stage.style.setProperty("transition", "none");
+			stage.style.setProperty("--m", "1");
+			const height = head.offsetHeight;
+			stage.style.removeProperty("--m");
+			void head.offsetHeight; // aplica el valor real antes de devolver la transición
+			stage.style.removeProperty("transition");
+			stage.style.setProperty("--head-h", `${height}px`);
+		}
+	};
+	// el tamaño del título depende de la fuente pixel: se vuelve a medir cuando termina de cargar
+	document.fonts?.ready.then(() => { if (desktop.matches) measureHeads(); });
+
+	const update = () => {
+		frame = 0;
+		const x = Math.min(Math.max(scrollY - rail.offsetTop, 0), distance);
+		track.style.transform = `translate3d(${-x}px,0,0)`;
+		// avance para el velo del paisaje: --xr en pantallas desde el hero, --xe cuánto falta para la última
+		rail.style.setProperty("--xr", (x / innerWidth).toFixed(4));
+		rail.style.setProperty("--xe", Math.max(0, 1 - (distance - x) / innerWidth).toFixed(4));
+		hero?.setPan(x);
+	};
+
+	const measure = () => {
+		if (!desktop.matches) {
+			rail.style.height = "";
+			track.style.transform = "";
+			return;
+		}
+		distance = track.scrollWidth - innerWidth;
+		rail.style.height = `${distance + innerHeight}px`;
+		measureHeads();
+		hero?.setRoadEnd(roadEnd());
+		update();
+	};
+
+	// Paisaje de fondo (como home-hero-scene.tsx de WEB): solo en desktop. El import dinámico lo deja en
+	// un archivo aparte que el navegador pide recién acá, así en teléfono y tablet no se descarga. La
+	// cámara sigue el avance de la pista y el camino termina en un buzón en la última pantalla.
+	type Hero = { destroy(): void; setPan(px: number): void; setRoadEnd(px: number): void; setMail(sent: boolean): void };
+	const ROAD_END = 0.83; // dónde queda el buzón, en anchos de la última pantalla (el de WEB)
+	const scene = document.querySelector<HTMLElement>("#scene")!;
+	let hero: Hero | undefined;
+	let loading = 0;
+	let mailSent = false; // la postal se envió (Contact.astro): la banderita del buzón queda levantada
+	const roadEnd = () => distance + innerWidth * ROAD_END;
+
+	const mountScene = () => {
+		if (hero || loading) return;
+		const ticket = (loading = performance.now());
+		import("../lib/hero-sunset.js")
+			.then(({ mountHero }) => {
+				if (loading !== ticket || !desktop.matches) return; // se achicó la ventana mientras llegaba
+				loading = 0;
+				hero = mountHero(scene, { mailLabel: scene.dataset.mailLabel ?? "" }) as Hero;
+				hero.setRoadEnd(roadEnd());
+				if (mailSent) hero.setMail(true);
+				update();
+			})
+			.catch(() => { loading = 0; });
+	};
+	const unmountScene = () => { loading = 0; hero?.destroy(); hero = undefined; };
+	const syncScene = () => (desktop.matches ? mountScene() : unmountScene());
+	addEventListener("site:mail", (event) => { mailSent = (event as CustomEvent<boolean>).detail; hero?.setMail(mailSent); });
+
+	addEventListener("scroll", () => { if (desktop.matches && !frame) frame = requestAnimationFrame(update); }, { passive: true });
+	addEventListener("resize", measure);
+	desktop.addEventListener("change", () => { measure(); syncScene(); });
+	measure();
+	syncScene();
+
+	// Desktop: el scroll va de a una pantalla. Cada gesto (rueda, trackpad o teclado) lleva a la siguiente o
+	// a la anterior; mientras la vista viaja, y hasta que se calma la inercia del trackpad, no se encadena otro.
+	// En teléfono y tablet el scroll sigue normal.
+	// solo las secciones: los <script> de los componentes también quedan dentro de la pista
+	const screens = [...track.querySelectorAll<HTMLElement>(":scope > section")];
+	const SETTLE_MS = 180; // silencio de la rueda para aceptar otro gesto
+	let moving = false;
+	let lastWheel = 0;
+	let settle = 0;
+
+	const current = () => {
+		const x = scrollY - rail.offsetTop;
+		let best = 0;
+		screens.forEach((screen, i) => { if (Math.abs(screen.offsetLeft - x) < Math.abs(screens[best].offsetLeft - x)) best = i; });
+		return best;
+	};
+
+	const goTo = (index: number) => {
+		const target = screens[Math.min(Math.max(index, 0), screens.length - 1)];
+		const top = rail.offsetTop + Math.min(target.offsetLeft, distance);
+		if (Math.abs(scrollY - top) < 2) return;
+		moving = true;
+		scrollTo({ top, behavior: calm.matches ? "auto" : "smooth" });
+		// sin el evento scrollend (Safari viejo), se libera cuando el viaje ya terminó
+		if (!("onscrollend" in window)) window.setTimeout(release, 900);
+	};
+
+	// la vista llegó: se libera cuando además la rueda lleva un rato quieta
+	const release = () => {
+		clearTimeout(settle);
+		const wait = SETTLE_MS - (performance.now() - lastWheel);
+		if (wait > 0) settle = window.setTimeout(release, wait);
+		else moving = false;
+	};
+	addEventListener("scrollend", () => { if (moving) release(); });
+
+	addEventListener("wheel", (event) => {
+		if (!desktop.matches || event.ctrlKey) return; // ctrl + rueda: zoom
+		const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+		const dir = Math.sign(delta);
+		if (!dir) return;
+		event.preventDefault();
+		const now = performance.now();
+		const quiet = now - lastWheel > SETTLE_MS;
+		lastWheel = now;
+		if (moving) { release(); return; }
+		if (!quiet) return; // cola de inercia del gesto anterior
+		goTo(current() + dir);
+	}, { passive: false });
+
+	const KEYS: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, PageDown: 1, " ": 1, ArrowUp: -1, ArrowLeft: -1, PageUp: -1 };
+	addEventListener("keydown", (event) => {
+		if (!desktop.matches || event.altKey || event.ctrlKey || event.metaKey) return;
+		const el = event.target as HTMLElement;
+		if (el.closest("input, textarea, select, [contenteditable]")) return; // escribiendo en el formulario
+		if (event.key === " " && el.closest("button, a")) return; // espacio sobre un botón o link: lo activa
+		let index: number | undefined;
+		if (event.key === "Home") index = 0;
+		else if (event.key === "End") index = screens.length - 1;
+		else if (event.key in KEYS) index = current() + KEYS[event.key] * (event.key === " " && event.shiftKey ? -1 : 1);
+		if (index === undefined) return;
+		event.preventDefault();
+		if (!moving) goTo(index);
+	});
+
+	// al cambiar el tamaño de la ventana, la vista vuelve a encuadrar su pantalla
+	addEventListener("resize", () => { if (desktop.matches) scrollTo({ top: rail.offsetTop + Math.min(screens[current()].offsetLeft, distance) }); });
+
+	// Los links a una sección (#contact) llevan hasta donde esa pantalla queda a la vista.
+	document.addEventListener("click", (event) => {
+		const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
+		const target = link && document.querySelector<HTMLElement>(link.hash);
+		if (!desktop.matches || !target || !track.contains(target)) return;
+		event.preventDefault();
+		goTo(screens.findIndex((screen) => screen.contains(target)));
+		history.replaceState(null, "", link.hash);
+	});
+</script>

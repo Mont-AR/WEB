@@ -1,0 +1,16 @@
+---
+import Arrow from "./Arrow.astro";
+import { content, homeContent, whatsappUrl } from "../content.js";
+
+const [brandName, brandTld] = content.marca.nombre.split(".");
+---
+
+<header class="fixed inset-x-0 top-0 z-20 flex items-center justify-between gap-4 bg-linear-to-b from-night from-40% to-transparent px-4 lg:px-[clamp(20px,4.3vw,76px)] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-6">
+	<a href="/" aria-label={`${content.marca.nombre}, inicio`} class="font-pixel text-base whitespace-nowrap text-cream no-underline [text-shadow:3px_4px_0_#24104d]">{brandName}<span class="text-cyan">{brandTld}</span></a>
+	<nav aria-label="Principal">
+		<!-- se oculta mientras el contacto está a la vista (Layout.astro) -->
+		<a href="#contact" id="talk" class="btn-pixel btn-pixel-sm">{homeContent.nav.contacto} <Arrow class="size-3" /></a>
+	</nav>
+</header>
+<!-- abajo a la derecha, fijo, como en WEB -->
+<a href={whatsappUrl} target="_blank" rel="noopener noreferrer" class="btn-pixel btn-pixel-sm fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-20 hidden md:block">{content.interfaz.whatsapp}</a>

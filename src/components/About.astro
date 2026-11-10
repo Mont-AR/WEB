@@ -1,0 +1,31 @@
+---
+import Ink from "./Ink.astro";
+import Typed from "./Typed.astro";
+import { content, homeContent, whatsappUrl } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { sobreMi } = homeContent;
+const [intro, ...resto] = sobreMi.parrafos;
+
+// se tipea el título (con su número, como el resto de las secciones), la frase se entinta (24 ms por
+// letra, como en WEB) y después entra el resto
+const clock = createClock();
+const title = clock.type(sobreMi.kicker, TYPE_SPEED.note);
+const inkStart = clock.end;
+clock.wait(intro.replace(/ /g, "").length * 24 + 280);
+---
+
+<section id="sobre-mi" aria-labelledby="sobre-mi-title" data-reveal style={`--after:${clock.end}`} class="section stage gap-10 [--head-s:.38] [--intro-w:min(1200px,88vw)]">
+	<!-- en desktop la frase se achica a (1 − --head-s) de su tamaño, y el texto de abajo ocupa su mismo ancho -->
+	<div class="stage-head grid gap-8 lg:text-center">
+		<p class="note"><Typed typed={title} /></p>
+		<Ink as="h2" id="sobre-mi-title" text={intro} start={inkStart} class="stage-shrink max-w-(--intro-w) font-pixel text-sm leading-[1.6] uppercase [--fs0:clamp(14px,min(2.3vw,5.2vh),40px)]" />
+	</div>
+	<div class="stage-body grid gap-5" style="--body-w:calc(var(--intro-w) * (1 - var(--head-s)))">
+		{resto.map((text, i) => <p class="enter m-0 text-[15px] leading-[1.55] text-muted lg:text-center" style={`--i:${i}`}>{text}</p>)}
+		<p class="enter m-0 flex flex-wrap justify-center gap-x-7.5 gap-y-3.5" style={`--i:${resto.length}`}>
+			<a class="link-line" href={`mailto:${content.contacto.email}`}>{content.contacto.email}</a>
+			<a class="link-line" href={whatsappUrl} target="_blank" rel="noopener noreferrer">{content.interfaz.whatsapp}</a>
+		</p>
+	</div>
+</section>

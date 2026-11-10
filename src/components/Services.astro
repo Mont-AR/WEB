@@ -1,0 +1,78 @@
+---
+import Typed from "./Typed.astro";
+import { choiceIcons, homeContent, serviceLabel, servicesContent } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { servicios } = homeContent;
+const descripciones: Record<string, string> = servicios.descripciones;
+// GIF transparente de 1×1, para que en el teléfono la <img> no descargue nada
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const clock = createClock();
+const kicker = clock.type(servicios.kicker, TYPE_SPEED.note);
+const title = clock.type(servicesContent.title, TYPE_SPEED.display);
+---
+
+<!-- Teléfono y tablet: título y tarjetas una debajo de la otra.
+     Desktop: el título se tipea grande y se achica (stage-head), y entra la selección de personaje como en
+     WEB: cada tarjeta con su foto; la última señalada (puntero o foco) queda elegida con "Selected" y su
+     descripción abajo. -->
+<section id="servicios" aria-labelledby="servicios-title" data-reveal style={`--after:${clock.end}`} class="section stage gap-5">
+	<header class="stage-head grid gap-5">
+		<p class="note"><Typed typed={kicker} /></p>
+		<h2 id="servicios-title" class="display display-md stage-title" style={`--chars:${[...title.text].length}`}><Typed typed={title} /></h2>
+	</header>
+	<div class="stage-body">
+		<ul id="service-select" class="m-0 grid list-none gap-5 p-0 pr-2 lg:grid-cols-6 lg:gap-[clamp(12px,1.3vw,22px)] lg:pr-0">
+			{servicesContent.list.map((value, i) => (
+				<li class="service" tabindex="0" data-selected={i === 0 ? "" : undefined}>
+					<div class="pixel-card service-card enter h-full gap-3" style={`--i:${i}`}>
+						<div class="service-window hidden lg:grid" aria-hidden="true">
+							<!-- la foto se descarga solo en desktop: en teléfono y tablet el navegador toma el píxel vacío
+							     incrustado (sin pedido de red) y la fuente de desktop ni se pide -->
+							<picture>
+								<source media="(min-width: 1024px)" srcset={choiceIcons[value]} />
+								<img src={BLANK} alt="" width="64" height="64" decoding="async" draggable="false" />
+							</picture>
+						</div>
+						<h3 class="m-0 font-pixel text-[11px] leading-normal font-normal text-cream uppercase lg:min-h-[3em] lg:text-[clamp(9px,.72vw,11px)]">{serviceLabel(value)}</h3>
+						<p class="service-desc m-0 text-sm leading-[1.5] text-muted" data-label={serviceLabel(value)}>{descripciones[value]}</p>
+					</div>
+				</li>
+			))}
+		</ul>
+		<!-- ficha de la elegida, debajo de la fila (solo desktop, con JS). Arranca vacía y el script le copia la
+		     descripción de la tarjeta elegida, así el texto está una sola vez en el HTML (para los buscadores). -->
+		<div class="service-info enter" style={`--i:${servicesContent.list.length}`} aria-hidden="true">
+			<p class="note mb-2.5 text-[clamp(9px,.7vw,11px)]" data-info-label></p>
+			<p class="mx-auto my-0 max-w-[62ch] text-[clamp(14px,1.05vw,17px)] leading-normal text-muted" data-info-text></p>
+		</div>
+	</div>
+</section>
+
+<script>
+	// Selección de personaje (home-select.tsx de WEB): la tarjeta sobre la que pasa el puntero, o que recibe
+	// el foco, queda elegida aunque el puntero se vaya; arranca elegida la primera. La ficha de abajo muestra
+	// la descripción de la elegida, copiada de su tarjeta.
+	const list = document.querySelector<HTMLElement>("#service-select");
+	const infoLabel = document.querySelector<HTMLElement>("[data-info-label]");
+	const infoText = document.querySelector<HTMLElement>("[data-info-text]");
+
+	const show = (card: HTMLElement) => {
+		const desc = card.querySelector<HTMLElement>(".service-desc");
+		if (infoLabel) infoLabel.textContent = `▶ ${desc?.dataset.label ?? ""}`;
+		if (infoText) infoText.textContent = desc?.textContent ?? "";
+	};
+
+	const choose = (event: Event) => {
+		const card = (event.target as HTMLElement).closest<HTMLElement>(".service");
+		if (!card || card.hasAttribute("data-selected")) return;
+		list?.querySelector("[data-selected]")?.removeAttribute("data-selected");
+		card.setAttribute("data-selected", "");
+		show(card);
+	};
+
+	const first = list?.querySelector<HTMLElement>("[data-selected]");
+	if (first) show(first);
+	list?.addEventListener("pointerover", choose);
+	list?.addEventListener("focusin", choose);
+</script>

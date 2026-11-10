@@ -1,0 +1,30 @@
+---
+import Arrow from "./Arrow.astro";
+import Typed from "./Typed.astro";
+import { homeContent, serviceLabel } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { proyectos } = homeContent;
+const clock = createClock();
+const kicker = clock.type(proyectos.kicker, TYPE_SPEED.note);
+const title = clock.type(proyectos.titulo, TYPE_SPEED.display);
+---
+
+<section id="proyectos" aria-labelledby="proyectos-title" data-reveal style={`--after:${clock.end}`} class="section gap-10">
+	<header class="grid gap-5">
+		<p class="note"><Typed typed={kicker} /></p>
+		<h2 id="proyectos-title" class="display display-md"><Typed typed={title} /></h2>
+		<p class="lead enter">{proyectos.descripcion}</p>
+	</header>
+	{proyectos.lista.map((project, index) => (
+		<article class="enter grid gap-4" style={`--i:${index + 1}`}>
+			{project.video
+				? <video src={project.video} poster={project.imagen || undefined} controls muted playsinline preload="metadata" />
+				: project.imagen && <img src={project.imagen} alt="" loading="lazy" decoding="async" />}
+			<p class="note">{`${String(index + 1).padStart(2, "0")} — ${project.servicios.map(serviceLabel).join(" · ")}`}</p>
+			<h3 class="display display-md">{project.nombre}</h3>
+			<p class="caps">{project.descripcion}</p>
+			{project.link && <a class="btn-pixel justify-self-start" href={project.link} target="_blank" rel="noopener noreferrer">{proyectos.verProyecto} <Arrow /></a>}
+		</article>
+	))}
+</section>

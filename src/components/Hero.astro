@@ -1,0 +1,29 @@
+---
+import Typed from "./Typed.astro";
+import { heroContent, homeContent } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { hero } = homeContent;
+
+// como en WEB: kicker, título palabra por palabra y subtítulo, con el cursor titilando al final
+const clock = createClock(450);
+const kicker = clock.type(hero.kicker, TYPE_SPEED.note);
+const titleWords = heroContent.title.split(" ").map((word) => clock.type(word, TYPE_SPEED.title));
+const subtitle = clock.type(heroContent.subtitle, TYPE_SPEED.sub, true);
+---
+
+<!-- data-on de entrada: el hero arranca a tipear con el primer pintado -->
+<section id="hero" aria-labelledby="hero-title" data-reveal data-on style={`--after:${clock.end}`} class="relative isolate flex min-h-svh flex-col items-center justify-center gap-5 px-4 text-center lg:px-[clamp(20px,4.3vw,76px)]">
+	<!-- desktop: sombra detrás del título para leerlo sobre el paisaje (home-hero-shade de WEB) -->
+	<div class="pointer-events-none absolute inset-0 -z-10 hidden bg-[radial-gradient(ellipse_52%_40%_at_50%_47%,rgb(7_11_57/.5),transparent_75%)] lg:block" aria-hidden="true"></div>
+	<p class="note"><Typed typed={kicker} /></p>
+	<h1 id="hero-title" class="display text-[min(6.6vw,12vh)] leading-[1.2]">
+		<Typed typed={{ text: heroContent.title, letters: [] }} lines={titleWords} />
+	</h1>
+	<p class="m-0 font-pixel text-[10px] leading-[1.45] text-hero-sub [text-shadow:3px_4px_0_#063d7d]"><Typed typed={subtitle} /></p>
+
+	<!-- aviso de scroll: en el teléfono la línea baja, como la vista -->
+	<p class="scroll-cue absolute bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-1/2 m-0 flex -translate-x-1/2 flex-col items-center gap-3 lg:flex-row lg:gap-3.5 font-pixel text-[8px] tracking-[.06em] whitespace-nowrap text-muted uppercase" aria-hidden="true">
+		<span>{hero.scroll}</span><i class="block h-10 w-px bg-linear-to-b from-cream to-transparent lg:h-px lg:w-12 lg:bg-linear-to-r"></i>
+	</p>
+</section>

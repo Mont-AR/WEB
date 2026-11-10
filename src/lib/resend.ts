@@ -1,29 +1,35 @@
-type ResendMessage = {
-  apiKey: string;
-  from: string;
-  to: string;
-  subject: string;
-  text: string;
-  replyTo?: string;
+// Envío de mails con Resend (https://resend.com), por su API HTTP: funciona igual en Cloudflare (fetch).
+// Lo usa la función del formulario (functions/api/contact.ts). Es el de la versión Next de WEB.
+
+export type ResendMessage = {
+	apiKey: string;
+	/** remitente de un dominio verificado en Resend, p. ej. "Mont.AR <contacto@montivero.ar>" */
+	from: string;
+	to: string;
+	subject: string;
+	text: string;
+	/** a quién se responde: el mail de quien escribió, si dejó uno */
+	replyTo?: string;
 };
 
+/** Manda el mail. `ok` es true solo si Resend lo aceptó y devolvió su id. */
 export async function sendResendEmail(message: ResendMessage, transport: typeof fetch = fetch) {
-  const response = await transport("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${message.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: message.from,
-      to: [message.to],
-      subject: message.subject,
-      text: message.text,
-      ...(message.replyTo ? { reply_to: message.replyTo } : {}),
-    }),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!response.ok) return { ok: false, status: response.status };
-  const result = await response.json() as { id?: unknown };
-  return { ok: typeof result.id === "string", status: response.status };
+	const response = await transport("https://api.resend.com/emails", {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${message.apiKey}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			from: message.from,
+			to: [message.to],
+			subject: message.subject,
+			text: message.text,
+			...(message.replyTo ? { reply_to: message.replyTo } : {}),
+		}),
+		signal: AbortSignal.timeout(10000),
+	});
+	if (!response.ok) return { ok: false, status: response.status };
+	const result = (await response.json().catch(() => null)) as { id?: unknown } | null;
+	return { ok: typeof result?.id === "string", status: response.status };
 }

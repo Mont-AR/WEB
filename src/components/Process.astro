@@ -1,0 +1,27 @@
+---
+import Typed from "./Typed.astro";
+import { homeContent } from "../content.js";
+import { TYPE_SPEED, createClock } from "../lib/typewriter.js";
+
+const { proceso } = homeContent;
+const clock = createClock();
+const kicker = clock.type(proceso.kicker, TYPE_SPEED.note);
+const title = clock.type(proceso.titulo, TYPE_SPEED.display);
+---
+
+<section id="proceso" aria-labelledby="proceso-title" data-reveal style={`--after:${clock.end}`} class="section stage gap-10">
+	<header class="stage-head grid gap-5">
+		<p class="note"><Typed typed={kicker} /></p>
+		<h2 id="proceso-title" class="display display-md stage-title" style={`--chars:${[...title.text].length}`}><Typed typed={title} /></h2>
+		<p class="lead enter lg:mx-auto">{proceso.descripcion}</p>
+	</header>
+	<ol class="stage-body m-0 grid list-none gap-8 p-0 lg:grid-cols-4 lg:gap-0">
+		{proceso.pasos.map((step, index) => (
+			<li class="enter group flex flex-col gap-4.5 border-l border-cream/18 px-6 py-2.5 lg:items-center lg:text-center" style={`--i:${index + 1}`}>
+				<span class="font-pixel text-xs text-cyan [text-shadow:2px_2px_0_var(--color-step-shadow)]">{String(index + 1).padStart(2, "0")}</span>
+				<h3 class="display text-lg group-hover:text-cyan">{step.titulo}</h3>
+				<p class="m-0 max-w-[36ch] text-[15px] leading-normal text-muted">{step.descripcion}</p>
+			</li>
+		))}
+	</ol>
+</section>

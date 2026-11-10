@@ -1,0 +1,79 @@
+---
+import "../styles/global.css";
+import { content } from "../content.js";
+import { author, ogImage, siteDescription, siteName, siteTitle, siteUrl, structuredData } from "../lib/site.js";
+
+const canonical = `${siteUrl}/`;
+const image = `${siteUrl}${ogImage.url}`;
+// "<" escapado para que el JSON no pueda cerrar el <script>
+const jsonLd = JSON.stringify(structuredData).replace(/</g, "\\u003c");
+---
+
+<html lang="es-AR">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>{siteTitle}</title>
+		<meta name="description" content={siteDescription} />
+		<meta name="keywords" content={content.seo.palabrasClave.join(", ")} />
+		<meta name="author" content={author} />
+		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+		<link rel="canonical" href={canonical} />
+		<link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+		<!-- íconos y colores del navegador -->
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<link rel="icon" type="image/png" href="/icon.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="theme-color" content="#070b39" />
+		<meta name="color-scheme" content="dark" />
+		<!-- que el teléfono no convierta solo los números y mails en links -->
+		<meta name="format-detection" content="telephone=no, email=no, address=no" />
+
+		<!-- Open Graph y Twitter: la tarjeta al compartir el link -->
+		<meta property="og:type" content="website" />
+		<meta property="og:locale" content="es_AR" />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:site_name" content={siteName} />
+		<meta property="og:title" content={siteTitle} />
+		<meta property="og:description" content={siteDescription} />
+		<meta property="og:image" content={image} />
+		<meta property="og:image:width" content={String(ogImage.width)} />
+		<meta property="og:image:height" content={String(ogImage.height)} />
+		<meta property="og:image:type" content={ogImage.type} />
+		<meta property="og:image:alt" content={ogImage.alt} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={siteTitle} />
+		<meta name="twitter:description" content={siteDescription} />
+		<meta name="twitter:image" content={image} />
+		<meta name="twitter:image:alt" content={ogImage.alt} />
+
+		<!-- datos estructurados (schema.org) -->
+		<script type="application/ld+json" set:html={jsonLd} />
+
+		<!-- con JS, las animaciones de las secciones esperan a que cada una llegue a la pantalla -->
+		<script is:inline>document.documentElement.classList.add("js")</script>
+	</head>
+	<body>
+		<slot />
+		<script>
+			// Cada sección con data-reveal se anima una sola vez, cuando un 20% entra en pantalla (global.css).
+			const sections = document.querySelectorAll<HTMLElement>("[data-reveal]:not([data-on])");
+			const observer = new IntersectionObserver((entries) => {
+				for (const entry of entries) {
+					if (!entry.isIntersecting) continue;
+					entry.target.setAttribute("data-on", "");
+					observer.unobserve(entry.target);
+				}
+			}, { threshold: 0.2 });
+			sections.forEach((section) => observer.observe(section));
+
+			// "Hablemos" lleva al contacto: mientras esa sección está a la vista, el botón no se muestra.
+			const talk = document.querySelector<HTMLElement>("#talk");
+			const contact = document.querySelector<HTMLElement>("#contact");
+			if (talk && contact) {
+				new IntersectionObserver(([entry]) => talk.toggleAttribute("data-hidden", entry.isIntersecting), { threshold: 0.2 }).observe(contact);
+			}
+		</script>
+	</body>
+</html>

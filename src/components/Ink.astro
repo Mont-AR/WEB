@@ -1,0 +1,16 @@
+---
+// Frase que se entinta letra por letra al llegar a su sección (RevealText de WEB): las letras arrancan en
+// violeta apagado y pasan a crema en su turno (--i). `start`: demora inicial (ms). `as`: la etiqueta
+// (p por defecto; h2 si la frase es el título de su sección).
+interface Props { text: string; start?: number; class?: string; as?: "p" | "h2"; id?: string }
+const { text, start = 0, class: className, as: Tag = "p", id } = Astro.props;
+let index = 0;
+const words = text.split(" ").map((word) => [...word].map((char) => ({ char, i: index++ })));
+---
+
+<Tag id={id} class:list={["m-0 font-normal", className]} style={`--ink-start:${start}`}>
+	<span class="sr-only">{text}</span>
+	<span aria-hidden="true">{words.map((word, w) => <>
+		<span class="inline-block whitespace-nowrap">{word.map((c) => <span class="ink" data-c={c.char} style={`--i:${c.i}`} />)}</span>{w < words.length - 1 && " "}
+	</>)}</span>
+</Tag>

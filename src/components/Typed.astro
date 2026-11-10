@@ -1,0 +1,15 @@
+---
+// Texto que se tipea (ver lib/typewriter.ts). El texto va una sola vez en .sr-only (lectores y
+// buscadores); las letras animadas se pintan con CSS desde data-c. `lines`: una palabra por línea.
+import type { Typed } from "../lib/typewriter";
+
+interface Props { typed: Typed; lines?: Typed[] }
+const { typed, lines } = Astro.props;
+const letter = (l: Typed["letters"][number]) =>
+	l.d === undefined ? " " : { char: l.char, style: `--d:${l.d};--s:${l.s}`, end: l.end };
+---
+
+<span class="sr-only">{typed.text}</span>
+{lines
+	? lines.map((line) => <span class="block" aria-hidden="true">{line.letters.map(letter).map((l) => typeof l === "string" ? l : <span class:list={["type", { "type-end": l.end }]} data-c={l.char} style={l.style} />)}</span>)
+	: <span aria-hidden="true">{typed.letters.map(letter).map((l) => typeof l === "string" ? l : <span class:list={["type", { "type-end": l.end }]} data-c={l.char} style={l.style} />)}</span>}

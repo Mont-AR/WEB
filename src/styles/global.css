@@ -1,0 +1,300 @@
+@import "tailwindcss";
+@import "@fontsource/press-start-2p/400.css";
+
+/* Colores y fuentes de WEB (WEB/src/app/globals.css y home.css) */
+@theme {
+  --color-night: #070b39;
+  --color-night-2: #120d50;
+  --color-dusk: #33145d;
+  --color-violet: #2e2a72;
+  --color-violet-line: #3b2f8a;
+  --color-plum: #43105f;
+  --color-deep: #0d0a3d;
+  --color-ink: #071139;
+  --color-cream: #fff6d9;
+  --color-muted: #d9d2ec;
+  --color-cyan: #61f7e7;
+  --color-cyan-border: #4feefa;
+  --color-cyan-label: #74fff4;
+  --color-cyan-input: #40c8de;
+  --color-mint: #e8fffb;
+  --color-gold: #fff1b0;
+  --color-pink: #e42a9b;
+  --color-button-ink: #09234a;
+  --color-button-shadow: #073f6d;
+  --color-field: #0b1d53;
+  --color-field-dark: #0b0838;
+  --color-hero-sub: #2af3ef;
+  --color-step-shadow: #073866;
+  --color-placeholder: #aaafd1;
+
+  --font-pixel: "Press Start 2P", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* margen lateral de WEB en desktop */
+    --gutter: clamp(20px, 4.3vw, 76px);
+  }
+  /* los links internos (Hablemos → contacto) se deslizan; con "reducir movimiento", saltan */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  /* en el teléfono la sección queda debajo del header fijo */
+  section { scroll-margin-top: 4.5rem; }
+  /* fondo violáceo/azulado, el mismo degradé del loader de WEB */
+  body {
+    @apply min-h-dvh font-mono text-cream;
+    background: radial-gradient(circle at 50% 30%, var(--color-dusk) 0, var(--color-night-2) 48%, var(--color-night) 100%) fixed var(--color-night);
+  }
+  ::selection {
+    @apply bg-cyan text-ink;
+  }
+  :focus-visible {
+    @apply outline-3 outline-offset-4 outline-cream;
+  }
+}
+
+@layer components {
+  /* Tipografía de WEB (home.css), en sus tamaños de teléfono */
+  /* títulos: pixel, mayúsculas, sombra pixelada en violeta */
+  .display {
+    @apply m-0 font-pixel leading-tight font-normal tracking-[-.02em] uppercase;
+    text-shadow: 4px 4px 0 var(--color-plum), 7px 8px 0 var(--color-deep);
+  }
+  .display-md { @apply text-xl; }
+  /* notas y kickers */
+  .note { @apply m-0 font-pixel text-[8px] leading-[1.8] tracking-[.08em] text-cyan uppercase; }
+  /* texto de apoyo */
+  .lead { @apply m-0 max-w-[46ch] text-[15px] leading-normal text-muted; }
+  .caps { @apply m-0 max-w-[48ch] text-sm leading-[1.55] text-muted; }
+  /* links subrayados en cian */
+  .link-line { @apply border-b border-current pb-1 text-cyan no-underline hover:text-cream; }
+
+  /* botón 8-bit de WEB (.home-button) */
+  .btn-pixel {
+    @apply relative inline-flex items-center justify-center gap-3 bg-cyan px-5 py-4 font-pixel text-[9px] leading-snug tracking-wider text-button-ink uppercase no-underline transition-[translate,filter] duration-150 ease-[steps(2)];
+    box-shadow: 0 -3px 0 0 var(--color-mint), 0 3px 0 0 var(--color-mint), -3px 0 0 0 var(--color-mint), 3px 0 0 0 var(--color-mint),
+      inset 3px 3px 0 0 rgb(255 255 255 / .35), inset -3px -3px 0 0 rgb(7 17 57 / .35);
+    filter: drop-shadow(4px 4px 0 var(--color-button-shadow));
+  }
+  .btn-pixel:hover { translate: 2px 2px; filter: drop-shadow(2px 2px 0 var(--color-button-shadow)); }
+  .btn-pixel:active { translate: 4px 4px; filter: drop-shadow(0 0 0 var(--color-button-shadow)); }
+  .btn-pixel:focus-visible { @apply outline-dashed outline-3 outline-offset-6 outline-gold; }
+  .btn-pixel:disabled { @apply cursor-wait opacity-75; }
+  .btn-pixel-sm { @apply px-4 py-3 text-[8px]; }
+
+  /* tarjeta pixel (postal del cierre de WEB, .home-closing .project-form), también en las cards de servicios: degradé violeta y borde pixelado que se pone cian al enfocar */
+  .pixel-card {
+    --edge: var(--color-violet-line);
+    @apply grid gap-1 p-3.5;
+    background: linear-gradient(180deg, #2a1670, #140c4a);
+    box-shadow: 0 -3px 0 0 var(--edge), 0 3px 0 0 var(--edge), -3px 0 0 0 var(--edge), 3px 0 0 0 var(--edge), 7px 9px 0 rgb(3 4 31 / .55);
+  }
+  .pixel-card:focus-within { --edge: var(--color-cyan); }
+
+  /* campos del formulario: 16px para que iOS no haga zoom */
+  .field {
+    @apply block min-h-10 w-full min-w-0 rounded-none border-2 border-violet-line bg-field-dark px-2 py-1.5 font-mono text-base leading-snug text-cream placeholder:text-placeholder;
+  }
+  .field:focus-visible { @apply outline-2 outline-offset-2 outline-gold; }
+  /* textarea con renglones, como papel de carta */
+  .field-lined {
+    @apply min-h-24 resize-none leading-6;
+    background: repeating-linear-gradient(180deg, var(--color-field-dark) 0 23px, #2a2370 23px 24px) local;
+  }
+  .field-label { @apply mt-1 font-mono text-[9px] leading-normal text-muted uppercase; }
+}
+
+/* ---------------------------------------------------------------- secciones
+   Teléfono y tablet (la base): con el alto de su contenido; solo el hero ocupa la pantalla.
+   Desktop (lg, 1024px+): cada sección ocupa la pantalla entera, con el margen lateral de WEB (--gutter)
+   y lugar arriba para el header fijo */
+@layer components {
+  .section { @apply flex flex-col justify-center px-4 py-16 lg:min-h-svh lg:px-[clamp(20px,4.3vw,76px)] lg:pt-28; }
+
+  /* desktop: las pantallas en fila (index.astro); la pista se mueve con el scroll vertical */
+  /* solo con JS (es quien mueve la pista); sin JS las pantallas quedan apiladas y se scrollean normal */
+  html.js .rail-stage { @apply lg:sticky lg:top-0 lg:h-svh lg:overflow-hidden; }
+  html.js .rail-track { @apply lg:flex lg:h-full lg:will-change-transform; }
+  /* overflow hidden: el contenido que entra desde abajo no debe abrir una barra de scroll en la pantalla */
+  html.js .rail-track > section { @apply lg:h-full lg:min-h-0 lg:w-screen lg:flex-none lg:overflow-hidden; }
+
+  /* paisaje de fondo (desktop, con JS): detrás de la pista. Fuera del hero el velo lo oscurece para leer
+     (abajo menos, para que se vea el camino) y en la última pantalla se aclara: el camino termina a la vista */
+  .rail-backdrop { display: none; }
+  html.js .rail-backdrop { @apply lg:pointer-events-none lg:absolute lg:inset-0 lg:block; }
+  .rail-scene { position: absolute; inset: 0; overflow: hidden; }
+  .rail-scene canvas { animation: fade-in-from .6s ease; }
+  .rail-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, var(--color-night) 0 70%, rgb(7 11 57 / .35) 86%, rgb(7 11 57 / .15));
+    opacity: calc(clamp(0, calc(var(--xr, 0) * .9), .62) * (1 - var(--xe, 0) * .75));
+  }
+  html.js .rail-track { position: relative; z-index: 1; }
+
+  /* "Hablemos" se oculta mientras el contacto está a la vista (Layout.astro) */
+  #talk { transition: opacity .2s steps(3), visibility 0s; }
+  #talk[data-hidden] { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s steps(3), visibility 0s .2s; }
+}
+
+/* ---------------------------------------------------------------- desktop: título grande que se achica
+   Como en WEB: en servicios, proceso y sobre mí el título se tipea grande en el centro de la pantalla
+   (stage-head); al terminar (--after) se achica y sube hasta arriba (--m de 0 a 1), y después entra el
+   contenido (stage-body) debajo. Al final los tres encabezados quedan a la misma distancia del header
+   (--stage-top). Se achica cambiando el tamaño de letra (no con scale), así el contenido de abajo sigue
+   al encabezado en el flujo normal. */
+@property --m { syntax: "<number>"; inherits: true; initial-value: 0; }
+@media (width >= 64rem) {
+  .stage {
+    --stage-top: 7rem; --m: 0;
+    position: relative; justify-content: flex-start; padding-top: var(--stage-top); padding-bottom: 3rem;
+    transition: --m .8s cubic-bezier(.65, 0, .35, 1) calc(var(--after, 0) * 1ms + 150ms);
+  }
+  .stage[data-on] { --m: 1; }
+  /* arranca con su centro en el medio de la pantalla y termina con su borde de arriba en --stage-top */
+  .stage-head {
+    position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+    transform: translateY(calc((1 - var(--m)) * (50svh - var(--stage-top) - 50%)));
+  }
+  /* título en una sola línea: de grande (--fs0, que entre en el ancho según sus --chars) a --fs1 */
+  .stage-title {
+    --fs0: min(7vw, 13vh, calc((100vw - 2 * var(--gutter)) / (var(--chars, 10) + 1)));
+    --fs1: clamp(22px, 2.4vw, 44px);
+    white-space: nowrap; font-size: calc(var(--fs0) * (1 - var(--m)) + var(--fs1) * var(--m));
+  }
+  /* la frase de sobre mí: se achica a (1 − --head-s) de su tamaño y de su ancho */
+  .stage-shrink {
+    font-size: calc(var(--fs0) * (1 - var(--m) * var(--head-s)));
+    max-width: calc(var(--intro-w) * (1 - var(--m) * var(--head-s)));
+  }
+  /* contenido: centrado en vertical en la pantalla (no en el espacio que deja el título). Cubre la pantalla
+     de arriba abajo con el mismo margen arriba y abajo: lo que ocupa el título ya achicado (--head-h, lo mide
+     index.astro) más un respiro (--body-gap). Si no entra en el medio, arranca debajo del título (safe) en
+     vez de taparlo. Ancho: --body-w si la sección lo define (sobre mí, contacto), si no casi toda la pantalla.
+     Ajuste a mano por sección: --body-offset (positivo baja, negativo sube), p. ej. [--body-offset:-2rem] */
+  .stage-body {
+    flex: 1; display: grid; align-content: center; align-self: center;
+    width: var(--body-w, min(1400px, calc(100% - 2 * var(--gutter))));
+  }
+  /* con JS (es quien mide el título); sin JS queda como arriba: centrado en el espacio debajo del título */
+  html.js .stage-body {
+    --body-gap: 2rem;
+    position: absolute; inset-block: 0; left: 50%; translate: -50% var(--body-offset, 0px);
+    padding-block: calc(var(--stage-top) + var(--head-h, 0px) + var(--body-gap));
+    align-content: safe center;
+  }
+  /* el contenido entra cuando el título terminó de achicarse */
+  .stage .enter { animation-delay: calc((var(--after, 0) + 950) * 1ms + var(--i, 0) * 140ms); }
+}
+
+/* ---------------------------------------------------------------- "¿Qué hago?" en desktop (Services.astro)
+   Selección de personaje como en WEB: tarjetas con su foto, apagadas; la elegida (data-selected) sube, se
+   enciende con el borde cian, muestra "Selected" titilando y su ficha debajo de la fila */
+.service-window {
+  place-items: center; aspect-ratio: 4 / 3; border: 3px solid var(--color-violet-line);
+  background: radial-gradient(circle at 62% 38%, #4a1f78, var(--color-night-2) 72%);
+}
+.service-window picture { display: contents; }
+.service-window img { width: 34%; height: auto; image-rendering: pixelated; filter: drop-shadow(0 0 12px rgb(97 247 231 / .45)); }
+.service-info { display: none; }
+@media (width >= 64rem) {
+  /* la selección necesita JS (Services.astro); sin JS cada tarjeta muestra su descripción */
+  html.js .service { outline: none; cursor: help; }
+  html.js .service-desc { display: none; }
+  .service-card { position: relative; }
+  html.js .service-card { filter: brightness(.7) saturate(.75); transition: transform .16s steps(3), filter .16s steps(2); }
+  html.js .service[data-selected] .service-card {
+    --edge: var(--color-cyan); filter: none; transform: translateY(-14px);
+    box-shadow: 0 -3px 0 0 var(--edge), 0 3px 0 0 var(--edge), -3px 0 0 0 var(--edge), 3px 0 0 0 var(--edge), 7px 9px 0 rgb(3 4 31 / .55), 0 0 0 9px rgb(97 247 231 / .14);
+  }
+  /* "Selected" con su flechita, sobre la elegida */
+  .service-card::before, .service-card::after {
+    content: ""; position: absolute; left: 50%; display: none; translate: -50% 0; animation: select-blink .8s steps(1) infinite;
+  }
+  .service-card::before {
+    content: "Selected"; bottom: calc(100% + 18px); padding: 4px 7px; background: var(--color-cyan); color: var(--color-button-ink);
+    font-family: var(--font-pixel); font-size: 9px; line-height: 1; text-transform: uppercase; white-space: nowrap;
+  }
+  .service-card::after { bottom: calc(100% + 8px); border: 6px solid transparent; border-top-color: var(--color-cyan); border-bottom: 0; }
+  html.js .service[data-selected] .service-card::before, html.js .service[data-selected] .service-card::after { display: block; }
+  html.js .service[data-selected] .service-window img { animation: select-bob .6s steps(2) infinite; }
+  /* ficha de la elegida: debajo de la fila, centrada en todo el ancho (la completa Services.astro) */
+  html.js .service-info { display: block; margin-top: 28px; text-align: center; pointer-events: none; }
+}
+@keyframes select-blink { 0%, 64% { opacity: 1; } 65%, 100% { opacity: .2; } }
+@keyframes select-bob { 50% { transform: translateY(-4px); } }
+
+/* ---------------------------------------------------------------- animaciones de texto
+   Cada sección con data-reveal se anima cuando llega a la pantalla (Layout.astro le pone data-on); hasta
+   entonces sus animaciones quedan en pausa. Sin JS o con "reducir movimiento", todo queda escrito y quieto. */
+
+/* tipeo (Typed.astro, lib/typewriter.ts), como en WEB: cada letra aparece en su --d (ms) y un cursor de
+   bloque la sigue durante --s; el último queda titilando */
+.type { position: relative; visibility: hidden; animation: type-in 1ms calc(var(--d) * 1ms) forwards; }
+.type::before { content: attr(data-c); }
+.type::after {
+  content: ""; position: absolute; left: 100%; top: .08em; bottom: .08em; width: .62em; margin-left: .06em;
+  background: currentColor; opacity: 0; animation: caret calc(var(--s) * 1ms) steps(1) calc(var(--d) * 1ms);
+}
+.type-end::after { animation: caret-blink 1s steps(1) calc(var(--d) * 1ms) infinite; }
+
+/* entintado (Ink.astro): cada letra pasa de violeta apagado a crema en su turno */
+.ink { position: relative; display: inline-block; color: var(--color-violet); }
+.ink::before, .ink::after { content: attr(data-c); }
+.ink::after { position: absolute; top: 0; left: 0; color: var(--color-cream); opacity: 0; animation: fade-in .28s linear calc(var(--ink-start, 0) * 1ms + var(--i) * 24ms) forwards; }
+
+/* entrada del resto del contenido: aparece subiendo, suave como en WEB, uno tras otro (--i), cuando terminó el tipeo (--after) */
+.enter { opacity: 0; translate: 0 24px; animation: enter .6s cubic-bezier(.2, .7, .3, 1) calc(var(--after, 0) * 1ms + var(--i, 0) * 140ms) forwards; }
+
+/* aviso de scroll del hero: aparece cuando terminó el tipeo y la línea baja */
+.scroll-cue { opacity: 0; animation: fade-in .4s steps(4) calc(var(--after, 0) * 1ms) forwards; }
+.scroll-cue i { transform-origin: top; animation: cue-line 1.8s ease-in-out infinite; }
+/* en desktop la vista avanza hacia la derecha: la línea también */
+@media (width >= 64rem) {
+  .scroll-cue i { transform-origin: left; animation-name: cue-line-x; }
+}
+
+/* en pausa hasta que la sección llega a la pantalla */
+html.js [data-reveal]:not([data-on]) :is(.type, .enter, .scroll-cue),
+html.js [data-reveal]:not([data-on]) .type::after,
+html.js [data-reveal]:not([data-on]) .ink::after { animation-play-state: paused; }
+
+@keyframes type-in { to { visibility: visible; } }
+@keyframes caret { 0%, 100% { opacity: 1; } }
+@keyframes caret-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+@keyframes fade-in { to { opacity: 1; } }
+@keyframes fade-in-from { from { opacity: 0; } }
+@keyframes enter { to { opacity: 1; translate: 0 0; } }
+@keyframes cue-line-x {
+  0% { transform: scaleX(0); }
+  50% { transform: scaleX(1); transform-origin: left; }
+  51% { transform-origin: right; }
+  100% { transform: scaleX(0); transform-origin: right; }
+}
+@keyframes cue-line {
+  0% { transform: scaleY(0); }
+  50% { transform: scaleY(1); transform-origin: top; }
+  51% { transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+/* sin JS no hay quien ponga data-on: el texto queda escrito */
+html:not(.js) :is(.type, .enter, .scroll-cue),
+html:not(.js) .ink::after { visibility: visible; opacity: 1; translate: none; animation: none; }
+html:not(.js) .type::after { display: none; }
+html:not(.js) .stage { --m: 1; transition: none; }
+/* sin JS el formulario no puede enviar: en su lugar quedan los contactos directos (como en WEB) */
+.contact-direct { display: none; }
+html:not(.js) .contact-direct { display: flex; }
+html:not(.js) .postal { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .type, .ink::after, .enter, .scroll-cue { visibility: visible; opacity: 1; translate: none; animation: none; }
+  .type::after { display: none; }
+  .scroll-cue i { animation: none; }
+  .stage { --m: 1; transition: none; }
+  .service-card::before, .service-card::after, .service-window img { animation: none !important; }
+}
