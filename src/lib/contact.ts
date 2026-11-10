@@ -1,5 +1,5 @@
 // Formulario de contacto: validación y texto del aviso (como WEB/src/lib/contact.ts). Lo usa la función
-// de Cloudflare Pages (functions/api/contact.ts); el formulario puede usar la misma validación.
+// del Worker (worker/contact.ts); el formulario puede usar la misma validación.
 import { projectContent, serviceLabel, servicesContent, startingContent } from "../content.js";
 
 export type ContactSubmission = {

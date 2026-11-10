@@ -10,8 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "cf:dev": "astro build && wrangler pages dev",
-    "cf:deploy": "astro build && wrangler pages deploy"
+    "cf:dev": "astro build && wrangler dev",
+    "cf:deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

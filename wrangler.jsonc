@@ -1,48 +1,41 @@
-// Cloudflare Pages: configuración del proyecto para Wrangler (deploy y pruebas locales).
-// - El sitio es estático: `npm run build` lo deja en dist/ (pages_build_output_dir).
-// - functions/ (en la raíz) son las funciones del sitio: functions/api/contact.ts atiende POST /api/contact.
-//   Cloudflare las detecta solas; no hace falta declararlas acá.
-// - Probar todo junto en local: `npm run cf:dev`. Deployar: `npm run cf:deploy` (deploya la branch de git
-//   actual: si es la de producción va a Production, si no a Preview).
+// Cloudflare Workers (con assets estáticos): configuración del proyecto para Wrangler.
+// - El sitio es estático: `npm run build` lo deja en dist/, y Cloudflare sirve esos archivos directo
+//   (assets), sin ejecutar código ni contar como pedidos al Worker.
+// - Solo /api/* pasa por el Worker (worker/index.ts): /api/contact atiende el formulario (worker/contact.ts).
+// - Probar todo junto en local: `npm run cf:dev`. Deployar a mano: `npm run cf:deploy`.
 //
-// Branches: QUÉ branches se deployan no se configura en este archivo sino en el panel:
-//   Pages → Settings → Builds → Branch control
+// Deploy desde git (Workers & Pages → montar → Settings → Build):
+//   - Build command: `npm run build` · Deploy command: `npx wrangler deploy`
 //   - Production branch: la que publica montivero.ar (p. ej. main).
-//   - Preview branches: "All non-Production branches" (todas, como astro) o solo las que se elijan.
-// Cada deploy de una branch que no es la de producción cae en el entorno "preview" y queda en
-// https://<branch>.montar.pages.dev (astro → https://astro.montar.pages.dev).
+//   - Non-production branch builds: activarlo para que las demás branches (astro, pruebas...) se suban
+//     como versiones de prueba, cada una con su URL de preview, sin tocar producción. Su comando de
+//     deploy: `npx wrangler versions upload`.
 //
-// Secretos: la clave de Resend y el remitente NO van acá. RESEND_API_KEY y CONTACT_FROM_EMAIL se cargan en
-//   Pages → Settings → Variables and Secrets, en Production Y en Preview (si no, el formulario de las
-//   branches responde "no configurado"), o con `npx wrangler pages secret put NOMBRE [--env preview]`.
-//   En local: .dev.vars o .env (los dos están en .gitignore).
-//
-// Con este archivo en el repo, las variables de "vars" se manejan desde acá y no desde el panel.
+// Secretos: la clave de Resend y el remitente NO van acá. RESEND_API_KEY y CONTACT_FROM_EMAIL se cargan
+//   en Workers & Pages → montar → Settings → Variables and Secrets (valen para producción y previews),
+//   o con `npx wrangler secret put NOMBRE`. En local: .dev.vars o .env (los dos están en .gitignore).
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  // nombre del proyecto en Cloudflare Pages (cambiarlo si el proyecto se llama distinto)
+  // nombre del Worker en Cloudflare: tiene que ser el mismo que el del proyecto en el panel
   "name": "montar",
-  "pages_build_output_dir": "./dist",
+  "main": "./worker/index.ts",
   "compatibility_date": "2026-11-01",
 
-  // variables públicas (no secretas) disponibles en las funciones como env.NOMBRE. Las de arriba valen
-  // para local; cada entorno de Cloudflare tiene las suyas abajo ("vars" no se hereda: se repite entera).
+  "assets": {
+    "directory": "./dist",
+    // así el Worker puede pasarle a los assets todo lo que no es /api (env.ASSETS)
+    "binding": "ASSETS",
+    // solo estas rutas ejecutan el Worker; el resto se sirve directo desde dist/
+    "run_worker_first": ["/api/*"]
+  },
+
+  // variables públicas (no secretas) disponibles en el Worker como env.NOMBRE. Con este archivo en el
+  // repo se manejan desde acá: lo que se cambie en el panel se pisa en el próximo deploy.
   "vars": {
     "CONTACT_TO_EMAIL": "desarrollo@montivero.ar"
   },
-  "env": {
-    // la branch de producción
-    "production": {
-      "vars": {
-        "CONTACT_TO_EMAIL": "desarrollo@montivero.ar"
-      }
-    },
-    // todas las demás branches (astro, pruebas...). Se puede mandar los avisos de prueba a otro mail.
-    "preview": {
-      "vars": {
-        "CONTACT_TO_EMAIL": "desarrollo@montivero.ar"
-      }
-    }
-  },
+
+  // URLs de preview para las versiones de las branches que no son producción
+  "preview_urls": true,
   "previews": {}
 }

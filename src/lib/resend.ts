@@ -1,5 +1,5 @@
 // Envío de mails con Resend (https://resend.com), por su API HTTP: funciona igual en Cloudflare (fetch).
-// Lo usa la función del formulario (functions/api/contact.ts). Es el de la versión Next de WEB.
+// Lo usa el Worker del formulario (worker/contact.ts). Es el de la versión Next de WEB.
 
 export type ResendMessage = {
 	apiKey: string;
