@@ -124,14 +124,21 @@ const SHOW_PROJECTS = false;
 	syncScene();
 
 	// Desktop: el scroll va de a una pantalla. Cada gesto (rueda, trackpad o teclado) lleva a la siguiente o
-	// a la anterior; mientras la vista viaja, y hasta que se calma la inercia del trackpad, no se encadena otro.
+	// a la anterior; mientras la vista viaja no se encadena otro, y la inercia del trackpad no cuenta como gesto.
 	// En teléfono y tablet el scroll sigue normal.
 	// solo las secciones: los <script> de los componentes también quedan dentro de la pista
 	const screens = [...track.querySelectorAll<HTMLElement>(":scope > section")];
 	const SETTLE_MS = 180; // silencio de la rueda para aceptar otro gesto
 	let moving = false;
 	let lastWheel = 0;
-	let settle = 0;
+	let lastDir = 0;
+	// Magnitudes recientes de la rueda. El trackpad sigue mandando eventos de inercia después de cada
+	// gesto, cada vez más chicos; si se vuelve a deslizar durante esa cola nunca llega el silencio, así
+	// que un gesto nuevo se reconoce también porque cambia de sentido o porque los deltas vuelven a crecer.
+	const recent: number[] = [];
+	const RAMP_MS = 250; // al empezar, un gesto acelera: ese aumento no es un gesto nuevo
+	let lastStart = 0;
+	let pending = 0; // gesto nuevo que llegó mientras la vista viajaba: se hace al llegar
 
 	const current = () => {
 		const x = scrollY - rail.offsetTop;
@@ -150,26 +157,40 @@ const SHOW_PROJECTS = false;
 		if (!("onscrollend" in window)) window.setTimeout(release, 900);
 	};
 
-	// la vista llegó: se libera cuando además la rueda lleva un rato quieta
+	// la vista llegó: se libera enseguida. La cola de inercia que siga llegando no encadena otro viaje
+	// (no es un gesto nuevo, ver `fresh`), pero un deslizamiento nuevo del trackpad sí se toma.
 	const release = () => {
-		clearTimeout(settle);
-		const wait = SETTLE_MS - (performance.now() - lastWheel);
-		if (wait > 0) settle = window.setTimeout(release, wait);
-		else moving = false;
+		moving = false;
+		if (pending) { const dir = pending; pending = 0; goTo(current() + dir); }
 	};
 	addEventListener("scrollend", () => { if (moving) release(); });
 
 	addEventListener("wheel", (event) => {
 		if (!desktop.matches || event.ctrlKey) return; // ctrl + rueda: zoom
-		const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+		const raw = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+		const delta = event.deltaMode === 1 ? raw * 16 : event.deltaMode === 2 ? raw * innerHeight : raw; // líneas o páginas → px
 		const dir = Math.sign(delta);
 		if (!dir) return;
 		event.preventDefault();
 		const now = performance.now();
+		const mag = Math.abs(delta);
 		const quiet = now - lastWheel > SETTLE_MS;
+		// temblor del trackpad al final de la inercia: deltas mínimos en sentido contrario, no son un gesto
+		if (!quiet && dir !== lastDir && mag < 4) { lastWheel = now; return; }
+		// la inercia solo decrece: un aumento claro respecto de los últimos eventos es un dedo nuevo
+		const prev = recent.slice(-4);
+		const surge = now - lastStart > RAMP_MS && prev.length >= 3 && mag >= 8 && mag > Math.max(...prev) * 1.5;
+		const fresh = quiet || dir !== lastDir || surge;
+		if (quiet) recent.length = 0;
+		recent.push(mag);
+		if (recent.length > 8) recent.shift();
 		lastWheel = now;
-		if (moving) { release(); return; }
-		if (!quiet) return; // cola de inercia del gesto anterior
+		lastDir = dir;
+		if (!fresh) return; // cola de inercia del gesto anterior
+		lastStart = now;
+		recent.length = 0; // la cola de este gesto se compara desde cero
+		recent.push(mag);
+		if (moving) { pending = dir; return; } // la vista todavía viaja: sigue al llegar
 		goTo(current() + dir);
 	}, { passive: false });
 
