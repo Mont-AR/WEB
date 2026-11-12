@@ -13,6 +13,14 @@ const jsonLd = JSON.stringify(structuredData).replace(/</g, "\\u003c");
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+		<!-- Google tag (GTM-WBG6FSL6): campaña de Google Ads. is:inline para que Astro no lo procese. -->
+		<script is:inline async src="https://www.googletagmanager.com/gtm.js?id=GTM-WBG6FSL6"></script>
+		<script is:inline>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+		</script>
 		<title>{siteTitle}</title>
 		<meta name="description" content={siteDescription} />
 		<meta name="keywords" content={content.seo.palabrasClave.join(", ")} />

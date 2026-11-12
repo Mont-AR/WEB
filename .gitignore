@@ -17,6 +17,7 @@ pnpm-debug.log*
 
 
 # environment variables
+.env.
 .env.*
 .env.production
 
@@ -35,3 +36,4 @@ pnpm-debug.log*
 .agents
 .claude
 AGENTS.md
+.env
