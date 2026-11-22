@@ -12,17 +12,20 @@ const data = {
   },
   seo: {
     titulo: "MONT.AR — Webs, sistemas y automatizaciones a medida",
-    descripcion: "Desarrollo webs, sistemas de gestión, automatizaciones y bots a medida. WordPress, Google Workspace e integraciones. Fabricio Montivero · Argentina.",
+    descripcion: "Programador en Argentina: webs, sistemas de gestión, automatizaciones y bots a medida, y revisión de proyectos hechos con IA. Fabricio Montivero.",
     palabrasClave: [
       "desarrollo web",
+      "programador",
+      "proyectos hechos con IA",
       "diseño web",
       "sistemas de gestión",
       "automatización",
       "bots",
-      "WordPress",
       "Google Workspace",
       "Fabricio Montivero",
       "Mont.AR",
+      "MontAR",
+      "pymes",
       "Argentina"
     ]
   },
@@ -39,16 +42,16 @@ const data = {
       id: "what-i-do",
       title: "¿Qué hago?",
       list: [
+        "proyectos con ia",
         "web personalizada",
-        "wordpress",
         "automatización",
         "sistemas de gestión",
         "bots",
         "google workspace"
       ],
       labels: {
+        "proyectos con ia": "Proyectos con IA",
         web: "Web",
-        wordpress: "WordPress",
         automatización: "Automatización",
         "sistemas de gestión": "Sistemas de gestión",
         bots: "Bots",
@@ -107,8 +110,8 @@ const data = {
     servicios: {
       kicker: "01 — Servicios",
       descripciones: {
+        "proyectos con ia": "¿Armaste algo con ChatGPT, Claude o Cursor? Lo reviso, corrijo fallas técnicas y de seguridad, y lo dejo mantenible y conectado con el resto.",
         "web personalizada": "Sitios a medida, rápidos y fáciles de encontrar, pensados para lo que tu proyecto necesita mostrar.",
-        wordpress: "Webs que podés actualizar vos mismo, con un diseño propio y sin plantillas recargadas.",
         automatización: "Tareas repetidas que pasan a hacerse solas: formularios, avisos, reportes y planillas.",
         "sistemas de gestión": "Herramientas internas para ordenar clientes, pedidos, turnos o stock en un solo lugar.",
         bots: "Asistentes para WhatsApp, Telegram o la web que responden y derivan consultas.",
@@ -183,7 +186,8 @@ const data = {
       titulo: "Sobre mí",
       parrafos: [
         "Soy Fabricio Montivero, desarrollador de software en Argentina.",
-        "Trabajo con personas, emprendimientos y equipos que necesitan una herramienta digital concreta: una web, un sistema para ordenar su gestión o una automatización que les devuelva tiempo.",
+        "Trabajo con personas, emprendimientos y pymes que necesitan una herramienta digital concreta: una web, un sistema para ordenar su gestión o una automatización que les devuelva tiempo.",
+        "También tomo proyectos que se armaron con IA y quedaron a medio camino: los reviso como técnico, corrijo lo que falla o es inseguro y los dejo listos para crecer.",
         "Me ocupo del proyecto de punta a punta: entender la necesidad, proponer la solución más simple que funcione, desarrollarla y acompañar después de la entrega."
       ]
     },
@@ -218,8 +222,8 @@ export const whatsappUrl = `https://wa.me/${content.contacto.whatsapp}?text=Hola
 /** Ícono pixel art de cada servicio (los valores de la lista), como en WEB. */
 /** @type {Record<string, string>} */
 export const choiceIcons = {
+  "proyectos con ia": "/card-icons/proyectos-con-ia.png",
   "web personalizada": "/card-icons/web.png",
-  wordpress: "/card-icons/wordpress.png",
   "automatización": "/card-icons/automatizacion.png",
   "sistemas de gestión": "/card-icons/sistemas-de-gestion.png",
   bots: "/card-icons/bots.png",
